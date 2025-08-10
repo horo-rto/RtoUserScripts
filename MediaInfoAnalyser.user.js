@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.1.1
+// @version      0.2.0
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -14,7 +14,6 @@
 // ==/UserScript==
 
 var post;
-var regex1 = /<div class="sp-wrap">.*?<div class="sp-body">.*?<\/div>\n<\/div>/gms;
 var video_size;
 var video_bitrate;
 var is_displayed;
@@ -166,40 +165,38 @@ class Text {
 (function() {
     console.log("RTO mediainfo analyser")
 
-    if(window.location.href.match(/start=\d+/) != null)
-        return;
+    if(window.location.href.match(/start=\d+/) != null) return;
 
     is_displayed = GM_getValue("mi_box_displayed") ?? true;
 
-    let posts = $('#topic_main > tbody > tr > .td2 > .post_wrap > .post_body');
-    post = posts[0];
+    post = $('#topic_main > tbody > tr > .td2 > .post_wrap > .post_body')[0];
 
     var spoiler = "";
-    var a = post.innerHTML.match(regex1);
-    for (const element of a) {
+    var a = post.innerHTML.match(/<div class="sp-wrap">.*?<div class="sp-body">.*?<\/div>\n<\/div>/gms);
+    for (const element of a)
         if (element.includes("Frame rate") || element.includes("Частота кадров"))
             spoiler = element;
+
+    var reports, main;
+    if(spoiler.includes("Уникальный идентификатор")){
+        reports = spoiler.split("Общее<br>");
+        main = reports[1].match(/Уникальный идентификатор.*?<\/div>\n<\/div>/gms);
+    }else{
+        reports = spoiler.split("Generel<br>");
+        main = reports[1].match(/Unique ID.*?<\/div>\n<\/div>/gms);
     }
-
-    var match = spoiler.match(/General.*?<\/div>\n<\/div>/gms);
-    if (match == null) match = spoiler.match(/Общее.*?<\/div>\n<\/div>/gms);
-    if (match == null) match = spoiler.match(/<div class="sp-body">.*?<\/div>\n<\/div>/gms);
-
-    var mi = match[0];
-    mi = mi.slice(0, mi.length-13);
-    mi = mi.replace("<pre class=\"post-pre\">", "").replace("</pre>", "");
+    if (main == null) main = reports[1];
 
     var genrl = null;
     var video = null;
     var audio = [];
     var subtl = [];
+    var extra = [];
 
-        console.log(mi);
-
-    var chunks = mi.split("<span class=\"post-br\"><br></span>");
+    var chunks = main.split("<span class=\"post-br\"><br></span>");
 
     for (const chunk of chunks) {
-        if (chunk.includes("General") || chunk.includes("Общее")){
+        if (chunk.includes("Unique ID") || chunk.includes("Уникальный идентификатор")){
             genrl = parce_general(chunk);
         } else if (chunk.includes("Text") || chunk.includes("Текст")){
             subtl.push(parce_text(chunk));
@@ -210,6 +207,21 @@ class Text {
         }
     }
 
+    if (reports.length > 2){
+        for (var i = 2; i < reports.length; i++){
+            var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
+            for (const chunk_extra of chunks_extra) {
+                if (chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")){
+                    extra.push(parce_audio(chunk_extra));
+                }
+            }
+        }
+    }
+
+    ui(genrl, video, audio, subtl, extra);
+})();
+
+function ui(genrl, video, audio, subtl, extra){
     var box = $('<div>', {id: 'mi_box', style:
                           "position: fixed; bottom:20%; right: -5px; padding: 10px 10px 10px 15px; " +
                           "background-color: #dee3e7; border-radius: 5px; border: 1px solid #80808080;" +
@@ -231,22 +243,22 @@ class Text {
     $('#mi_box_arrow_left')[0].style.display = is_displayed ? "none" : "block";
     if (!is_displayed) $('#mi_box')[0].style.transform = "translate(calc(100% - 20px), 0)";
 
-    console.log(video);
-    console.log(audio);
-    console.log(subtl);
-
     var text = "";
     if (video.bitrate == -1) text = genrl != null ? (genrl.toString() + "<hr>") : "";
     text += video.toString() + "<hr>";
     audio.forEach((stream) => text += stream.toString() + "<br>");
-    text += "<hr>";
-    subtl.forEach((stream) => text += stream.toString() + "<br>");
+    if (subtl.length > 0){
+        text += "<hr>";
+        subtl.forEach((stream) => text += stream.toString() + "<br>");
+    }
+    if (extra.length > 0){
+        text += "<hr><hr>";
+        extra.forEach((stream) => text += stream.toString() + "<br>");
+    }
 
     $('#mi_box').append(text);
-})();
-
+}
 function toggle() {
-    console.log("is_displayed: " + is_displayed);
     is_displayed = !is_displayed;
     GM_setValue("mi_box_displayed", is_displayed);
 
@@ -298,7 +310,9 @@ function parce_video(chunk){
         }else if (line.includes("Frame rate") || (line.includes("Частота кадров") && !line.includes("Частота кадров в оригинале"))){
             parced.fps = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
-            parced.bitrate = line.split(" : ")[1].replaceAll(/ /g, '').replaceAll("Кбит/сек","kbps").replaceAll("kb/s","kbps").replaceAll("Мбит/сек","Mbps").replaceAll("Mb/s","Mbps");
+            parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
+                .replaceAll("кбит/с","kbps").replaceAll("кбит/сек","kbps").replaceAll("kb/s","kbps")
+                .replaceAll("мбит/с","kbps").replaceAll("мбит/сек","Mbps").replaceAll("mb/s","Mbps");
             video_bitrate = parced.bitrate;
         }else if (line.includes("Bit depth") || line.includes("Битовая глубина")){
             parced.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
@@ -369,7 +383,9 @@ function parce_audio(chunk){
         }else if (line.includes("Channel layout") || line.includes("Channel positions") || line.includes("Расположение каналов")){
             if (line.includes("LFE")) parced.lfe = 1;
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
-            parced.bitrate = line.split(" : ")[1].replaceAll(/ /g, '').replaceAll("Кбит/сек","kbps").replaceAll("kb/s","kbps").replaceAll("Мбит/сек","Mbps").replaceAll("Mb/s","Mbps");
+            parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
+                .replaceAll("кбит/с","kbps").replaceAll("кбит/сек","kbps").replaceAll("kb/s","kbps")
+                .replaceAll("мбит/с","kbps").replaceAll("мбит/сек","Mbps").replaceAll("mb/s","Mbps");
         }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
             parced.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Stream size") || line.includes("Размер потока")){
