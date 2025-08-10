@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.0
+// @version      0.2.1
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -177,15 +177,13 @@ class Text {
         if (element.includes("Frame rate") || element.includes("Частота кадров"))
             spoiler = element;
 
-    var reports, main;
+    var reports;
     if(spoiler.includes("Уникальный идентификатор")){
         reports = spoiler.split("Общее<br>");
-        main = reports[1].match(/Уникальный идентификатор.*?<\/div>\n<\/div>/gms);
     }else{
-        reports = spoiler.split("Generel<br>");
-        main = reports[1].match(/Unique ID.*?<\/div>\n<\/div>/gms);
+        reports = spoiler.split("General<br>");
     }
-    if (main == null) main = reports[1];
+    var main = reports[1];
 
     var genrl = null;
     var video = null;
@@ -217,6 +215,9 @@ class Text {
             }
         }
     }
+
+    var union = [ genrl ].concat([video], audio, subtl, extra);
+    console.log(union);
 
     ui(genrl, video, audio, subtl, extra);
 })();
@@ -320,7 +321,7 @@ function parce_video(chunk){
             var newline = line.split(" : ")[1].split("(");
             var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
             var value = newline[0].replaceAll(/[0-9,\. ]/g, '');
-            if (value == "Гбайт" || value == "GiB" )
+            if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" )
                 parced.size = size.replace(",", ".")*1024;
             else
                 parced.size = size;
