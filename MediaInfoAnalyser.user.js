@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  MediaInfo analyser!
 // @author       Horo
-// @updateURL    https://raw.githubusercontent.com/horo-rto/TampermonkeyRtoScripts/refs/heads/main/MediaInfoAnalyser.user.js
+// @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
 // @match        https://rutracker.net/forum/viewtopic.php?t=*
 // @match        https://rutracker.nl/forum/viewtopic.php?t=*
