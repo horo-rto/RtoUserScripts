@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -26,7 +26,7 @@ class General {
     bitrate = -1;
 
     toString() {
-        return "        " + this.size + " " + this.bitrate;
+        return "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall bit rate: " + this.bitrate;
     }
 }
 class Video {
@@ -37,29 +37,37 @@ class Video {
     height = -1;
     width = -1;
     fps = -1;
-    vfr = -1;
+    vfr = 0;
     bitrate = -1;
     bit = -1;
     size = -1;
     percentage = -1;
-    language = -1;
-    default = -1;
-    forced = -1;
+    language = "";
+    default = 0;
+    forced = 0;
 
     toString() {
         var line = "";
         line += (this.default == 1 ? "[x]" : "<span style=\"color: red; font-weight: bold;\">[?]</span>" );
         line += (this.forced == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
 
-        if (this.percentage < 50)
-            line += "<span style=\"color: red; font-weight: bold;\">[" + this.percentage + "%]</span>";
-        else
-            line += "[" + this.percentage + "%]";
+        if (this.percentage < 0){
+            line += "<span style=\"color: #ee7600; font-weight: bold;\">[xx%]</span>";
+        }else{
+            if (this.percentage < 50)
+                line += "<span style=\"color: red; font-weight: bold;\">[" + this.percentage + "%]</span>";
+            else
+                line += "[" + this.percentage + "%]";
+        }
 
-        line += " " + this.codec + " " + this.width + "x" + this.height + " ";
-        line += this.fps + "fps ";
+        line += " " + this.codec + "@" + this.bit + "bit, "+ this.width + "x" + this.height + " " + this.fps + "fps ";
         if (this.vfr == 1) line += "(VFR) ";
-        line += this.bitrate + " " + this.bit + "bit";
+
+        if (this.bitrate == -1)
+            line += "<span style=\"color: #ee7600; font-weight: bold;\">???kbps</span> ";
+        else
+            line += this.bitrate + " ";
+
         if (this.hdr != "") line += "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + this.hdr;
         return line;
     }
@@ -70,14 +78,15 @@ class Audio {
     title = "";
     codec = "";
     channels = "";
+    lfe = 0;
     bitrate = -1;
     samplingrate = -1;
     size = -1;
     percentage = -1;
-    language = -1;
-    default = -1;
-    forced = -1;
-    isfirst = -1;
+    language = "";
+    default = 0;
+    forced = 0;
+    isfirst = 0;
 
     toString() {
         var line = "";
@@ -91,25 +100,39 @@ class Audio {
         if (video_size < this.size*3)
             var sizeError = true;
 
-        if (sizeError){
-            if (this.percentage < 10)
-                line += "<span style=\"color: red; font-weight: bold;\">[0" + this.percentage + "%]</span> ";
-            else
-                line += "<span style=\"color: red; font-weight: bold;\">[" + this.percentage + "%]</span> ";
+        if (this.percentage < 0){
+            line += "<span style=\"color: #ee7600; font-weight: bold;\">[xx%]</span>";
         }else{
-            if (this.percentage < 10)
-                line += "[0" + this.percentage + "%] ";
-            else
-                line += "[" + this.percentage + "%] ";
+            if (sizeError){
+                if (this.percentage < 10)
+                    line += "<span style=\"color: red; font-weight: bold;\">[0" + this.percentage + "%]</span> ";
+                else
+                    line += "<span style=\"color: red; font-weight: bold;\">[" + this.percentage + "%]</span> ";
+            }else{
+                if (this.percentage < 10)
+                    line += "[0" + this.percentage + "%] ";
+                else
+                    line += "[" + this.percentage + "%] ";
+            }
         }
 
-        line += " " + this.codec + " " + this.channels + "ch ";
+        line += " " + this.codec;
 
-        if (sizeError)
-            line += "<span style=\"color: red; font-weight: bold;\">" + this.bitrate + "</span> ";
+        if (this.lfe == 1)
+            line += " " + (this.channels - 1) + ".1, ";
         else
-            line += this.bitrate + " ";
-        line += this.samplingrate + "kHz " + this.language + " " + this.title;
+            line += " " + this.channels + ".0, ";
+
+        if (this.bitrate == -1){
+            line += "<span style=\"color: #ee7600; font-weight: bold;\">???kbps</span> ";
+        }else{
+            if (sizeError)
+                line += "<span style=\"color: red; font-weight: bold;\">" + this.bitrate + "</span> ";
+            else
+                line += this.bitrate + " ";
+        }
+
+        line += this.samplingrate + "kHz, " + this.language + " " + this.title;
         return line;
     }
 }
@@ -119,10 +142,10 @@ class Text {
     title = "";
     codec = "";
     count = -1;
-    language = -1;
-    default = -1;
-    forced = -1;
-    isfirst = -1;
+    language = "";
+    default = 0;
+    forced = 0;
+    isfirst = 0;
 
     toString() {
         var line = "";
@@ -132,7 +155,10 @@ class Text {
             line += (this.default == 1 ? "[x]" : "[ ]" );
         }
         line += (this.forced == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
-        line += " " + this.codec + " " + this.language + ", " + this.count + " lines, " + this.title;
+
+        line += " " + this.codec + ", " + this.language + ", ";
+        if (this.count > -1) line += this.count + " lines, ";
+        line += this.title;
         return line;
     }
 }
@@ -155,14 +181,20 @@ class Text {
             spoiler = element;
     }
 
-    var mi = spoiler.match(/<div class="sp-body">.*?<\/div>\n<\/div>/gms)[0];
-    mi = mi.slice(22, mi.length-13);
+    var match = spoiler.match(/General.*?<\/div>\n<\/div>/gms);
+    if (match == null) match = spoiler.match(/Общее.*?<\/div>\n<\/div>/gms);
+    if (match == null) match = spoiler.match(/<div class="sp-body">.*?<\/div>\n<\/div>/gms);
+
+    var mi = match[0];
+    mi = mi.slice(0, mi.length-13);
     mi = mi.replace("<pre class=\"post-pre\">", "").replace("</pre>", "");
 
     var genrl = null;
     var video = null;
     var audio = [];
     var subtl = [];
+
+        console.log(mi);
 
     var chunks = mi.split("<span class=\"post-br\"><br></span>");
 
@@ -197,14 +229,15 @@ class Text {
 
     $('#mi_box_arrow_right')[0].style.display = is_displayed ? "block" : "none";
     $('#mi_box_arrow_left')[0].style.display = is_displayed ? "none" : "block";
-    if (!is_displayed)
-        $('#mi_box')[0].style.transform = "translate(calc(100% - 20px), 0)";
+    if (!is_displayed) $('#mi_box')[0].style.transform = "translate(calc(100% - 20px), 0)";
 
     console.log(video);
     console.log(audio);
+    console.log(subtl);
 
     var text = "";
-    text = video.toString() + "<hr>";
+    if (video.bitrate == -1) text = genrl != null ? (genrl.toString() + "<hr>") : "";
+    text += video.toString() + "<hr>";
     audio.forEach((stream) => text += stream.toString() + "<br>");
     text += "<hr>";
     subtl.forEach((stream) => text += stream.toString() + "<br>");
@@ -229,12 +262,12 @@ function toggle() {
 function parce_general(chunk){
     var parced = new General();
 
-    var lines = chunk.replaceAll('&nbsp;', ' ').split("<br>");
+    var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
     for (const line of lines) {
         if (line.includes("File size") || line.includes("Размер файла")){
             parced.size = line.split(" : ")[1];
         }else if (line.includes("Overall bit rate") || line.includes("Общий битрейт")){
-            parced.bitrate = line.split(" : ")[1];
+            parced.bitrate = line.split(" : ")[1].replaceAll(/ /g, '').replaceAll("Кбит/сек","kbps").replaceAll("kb/s","kbps").replaceAll("Мбит/сек","Mbps").replaceAll("Mb/s","Mbps");
         }
     }
     return parced;
@@ -242,10 +275,17 @@ function parce_general(chunk){
 function parce_video(chunk){
     var parced = new Video();
 
-    var lines = chunk.replaceAll('&nbsp;', ' ').split("<br>");
+    var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
     for (const line of lines) {
         if ((line.startsWith("Format ") && !line.includes("Format profile") && !line.includes("Format settings")) || line.startsWith("Формат ")){
-            parced.codec = line.split(" : ")[1];
+            switch(line.split(" : ")[1]){
+                case "MPEG-4 Visual":
+                    parced.codec = "XviD";
+                    break;
+                default:
+                    parced.codec = line.split(" : ")[1];
+                    break;
+            }
         }else if (line.includes("HDR")){
             parced.hdr = line.split(" : ")[1];
         }else if (line.includes("Height") || line.includes("Высота")){
@@ -256,7 +296,7 @@ function parce_video(chunk){
             if (line.includes("Variable") || line.includes("Переменный"))
                 parced.vfr = 1;
         }else if (line.includes("Frame rate") || (line.includes("Частота кадров") && !line.includes("Частота кадров в оригинале"))){
-            parced.fps = line.split(" : ")[1].split(" ")[0];
+            parced.fps = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
             parced.bitrate = line.split(" : ")[1].replaceAll(/ /g, '').replaceAll("Кбит/сек","kbps").replaceAll("kb/s","kbps").replaceAll("Мбит/сек","Mbps").replaceAll("Mb/s","Mbps");
             video_bitrate = parced.bitrate;
@@ -291,20 +331,47 @@ function parce_video(chunk){
 function parce_audio(chunk){
     var parced = new Audio();
 
-    var lines = chunk.replaceAll('&nbsp;', ' ').split("<br>");
+    var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
     for (const line of lines) {
         if (line == "Audio #1" || line == "Аудио #1" || line == "Audio" || line == "Аудио"){
             parced.isfirst = 1;
         }else if (line.startsWith("Title") || line.startsWith("Заголовок")){
             parced.title = line.split(" : ")[1];
-        }else if (line.startsWith("Format ") || line.startsWith("Формат ")){
-            parced.codec = line.split(" : ")[1];
-        }else if (line.includes("Channel(s)") || line.includes("Канал(-ы)")){
+        }else if ((line.startsWith("Format ") &&
+                  !line.startsWith("Format version") &&
+                  !line.startsWith("Format profile") &&
+                  !line.startsWith("Format settings"))
+                  || line.startsWith("Формат ")){
+            switch(line.split(" : ")[1]){
+                case "MPEG Audio":
+                    parced.codec = "MP";
+                    break;
+                case "AC-3":
+                    parced.codec = "AC3";
+                    break;
+                case "E-AC-3":
+                    parced.codec = "EAC3";
+                    break;
+                case "AAC LC":
+                    parced.codec = "AAC";
+                    break;
+                default:
+                    parced.codec = line.split(" : ")[1];
+                    break;
+            }
+        }else if (line.includes("Format profile") || line.includes("Профиль формата")){
+            if (line.split(" : ")[1].startsWith("Layer "))
+                parced.codec += line.split(" : ")[1].replace("Layer ", "");
+            else
+                parced.codec += " " + line.split(" : ")[1];
+        }else if (line.includes("Channel(s)") || line.includes("Канал(-ы)") || line.includes("Каналы")){
             parced.channels = line.split(" : ")[1].split(" ")[0];
+        }else if (line.includes("Channel layout") || line.includes("Channel positions") || line.includes("Расположение каналов")){
+            if (line.includes("LFE")) parced.lfe = 1;
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
             parced.bitrate = line.split(" : ")[1].replaceAll(/ /g, '').replaceAll("Кбит/сек","kbps").replaceAll("kb/s","kbps").replaceAll("Мбит/сек","Mbps").replaceAll("Mb/s","Mbps");
-        }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации")){
-            parced.samplingrate = line.split(" : ")[1].split(" ")[0];
+        }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
+            parced.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Stream size") || line.includes("Размер потока")){
             var size = line.split(" : ")[1].split(" ");
             if (size[1] == "Гбайт" || size[1] == "GiB" )
@@ -331,7 +398,7 @@ function parce_audio(chunk){
 function parce_text(chunk){
     var parced = new Text();
 
-    var lines = chunk.replaceAll('&nbsp;', ' ').split("<br>");
+    var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
     for (const line of lines) {
         if (line == "Text #1" || line == "Текст #1" || line == "Text" || line == "Текст"){
             parced.isfirst = 1;
