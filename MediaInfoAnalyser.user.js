@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.1
+// @version      0.2.2
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -312,8 +312,8 @@ function parce_video(chunk){
             parced.fps = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
             parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
-                .replaceAll("кбит/с","kbps").replaceAll("кбит/сек","kbps").replaceAll("kb/s","kbps")
-                .replaceAll("мбит/с","kbps").replaceAll("мбит/сек","Mbps").replaceAll("mb/s","Mbps");
+                .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("kb/s","kbps")
+                .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("mb/s","Mbps");
             video_bitrate = parced.bitrate;
         }else if (line.includes("Bit depth") || line.includes("Битовая глубина")){
             parced.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
@@ -385,8 +385,8 @@ function parce_audio(chunk){
             if (line.includes("LFE")) parced.lfe = 1;
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
             parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
-                .replaceAll("кбит/с","kbps").replaceAll("кбит/сек","kbps").replaceAll("kb/s","kbps")
-                .replaceAll("мбит/с","kbps").replaceAll("мбит/сек","Mbps").replaceAll("mb/s","Mbps");
+                .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("kb/s","kbps")
+                .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("mb/s","Mbps");
         }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
             parced.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Stream size") || line.includes("Размер потока")){
