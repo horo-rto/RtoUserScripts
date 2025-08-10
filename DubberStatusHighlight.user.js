@@ -4,7 +4,7 @@
 // @version      0.2.2
 // @description  Hightlight dubbers with the color
 // @author       Horo
-// @updateURL    https://raw.githubusercontent.com/horo-rto/TampermonkeyRtoScripts/refs/heads/main/DubberStatusHighlight.user.js
+// @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/DubberStatusHighlight.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
 // @match        https://rutracker.net/forum/viewtopic.php?t=*
 // @match        https://rutracker.nl/forum/viewtopic.php?t=*
