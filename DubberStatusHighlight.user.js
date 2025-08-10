@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Dubber status highlight
 // @namespace    http://tampermonkey.net/
-// @version      0.2.2
+// @version      0.2.3
 // @description  Hightlight dubbers with the color
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/DubberStatusHighlight.user.js
@@ -63,15 +63,15 @@ function qc_handler() {
 
     var green = spoiler1[0].match(/\[color=green\]([А-яЁё\-\w\s]*)\[\/color\]/gm);
     green = green.map(item => item.substring(13, item.length - 8)).sort((a, b) => b.length - a.length);
-    handle_array(green, "rgba(0,100,0,0.6)");
+    handle_array(green, "rgba(0,100,0,0.6)", "Green");
 
     var blue = spoiler2[0].match(/\[color=blue\]([А-яЁё\-\w\s]*)\[\/color\]/gm);
     blue = blue.map(item => item.substring(12, item.length - 8)).sort((a, b) => b.length - a.length);
-    handle_array(blue, "rgba(0,0,200,0.6)");
+    handle_array(blue, "rgba(0,0,200,0.6)", "Blue");
 
     var red = spoiler2[0].match(/\[color=red\]([А-яЁё\-\w\s]*)\[\/color\]/gm);
     red = red.map(item => item.substring(11, item.length - 8)).sort((a, b) => b.length - a.length);
-    handle_array(red, "rgba(200,0,0,0.6)");
+    handle_array(red, "rgba(200,0,0,0.6)", "Red");
 }
 
 function pro_handler() {
@@ -85,17 +85,19 @@ function pro_handler() {
     var spoiler3 = data.post_text.match(/\[spoiler=\"Профессиональные\"\](.|\n)*?\[\/spoiler\]/gm);
     var pro = spoiler3[0].replace(" / ", "[/b][b]").match(/\[b\]([,А-яЁё\-\w\s]*)\[\/b\]/gm);
     pro = pro.map(item => item.substring(3, item.length - 4)).sort((a, b) => b.length - a.length);
-    handle_array(pro, "rgba(0,100,0,0.6)");
+    handle_array(pro, "rgba(0,100,0,0.6)", "Pro");
 }
 
-function handle_array(arr, color) {
+function handle_array(arr, color, status) {
+    var dump = [];
     arr.forEach(dubber => {
         if(post.innerHTML.toLowerCase().replaceAll(regex, "").match(new RegExp("[^А-яЁёA-z0-9]"+dubber.toLowerCase()+"[^А-яЁёA-z0-9]"))){
-            console.log(dubber);
+            dump.push(dubber);
             var searchMask = dubber.toLowerCase();
             var regEx = new RegExp(searchMask, "igm");
             var replaceMask = '<span style="border-radius: 3px; background-color: ' + color + ' !important; color: white !important; padding: 1px 3px 0px 3px;">' + dubber + '</span>';
             post.innerHTML = post.innerHTML.replaceAll(regEx, replaceMask);
         }
     });
+    if (dump.length > 0) console.log(status + " dubbers found: " + dump.join(", "));
 }
