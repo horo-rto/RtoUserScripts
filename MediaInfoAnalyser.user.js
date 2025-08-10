@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.5
+// @version      0.2.6
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -178,7 +178,7 @@ class Text {
             spoiler = element;
 
     var reports;
-    if(spoiler.includes("Уникальный идентификатор")){
+    if(spoiler.includes("Формат")){
         reports = spoiler.split("Общее<br>");
     }else{
         reports = spoiler.split("General<br>");
@@ -194,7 +194,7 @@ class Text {
     var chunks = main.split("<span class=\"post-br\"><br></span>");
 
     for (const chunk of chunks) {
-        if (chunk.includes("Unique ID") || chunk.includes("Уникальный идентификатор")){
+        if (chunk.includes("File size") || chunk.includes("Размер файла")){
             genrl = parce_general(chunk);
         } else if (chunk.includes("Text") || chunk.includes("Текст")){
             subtl.push(parce_text(chunk));
