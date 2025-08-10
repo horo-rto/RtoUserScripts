@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.2
+// @version      0.2.3
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -390,12 +390,14 @@ function parce_audio(chunk){
         }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
             parced.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Stream size") || line.includes("Размер потока")){
-            var size = line.split(" : ")[1].split(" ");
-            if (size[1] == "Гбайт" || size[1] == "GiB" )
-                parced.size = size[0].replace(",", ".")*1024;
+            var newline = line.split(" : ")[1].split("(");
+            var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
+            var value = newline[0].replaceAll(/[0-9,\. ]/g, '');
+            if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" )
+                parced.size = size.replace(",", ".")*1024;
             else
-                parced.size = size[0];
-            parced.percentage = size[2].slice(1,-2);
+                parced.size = size;
+            parced.percentage = newline[1].slice(0,-2);
         }else if (line.includes("Language") || line.includes("Язык")){
             parced.language = line.split(" : ")[1];
         }else if (line.includes("Default") || line.includes("По умолчанию")){
