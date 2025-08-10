@@ -4,7 +4,7 @@
 // @version      0.1.1
 // @description  extended anime mod links!
 // @author       Horo
-// @updateURL    https://raw.githubusercontent.com/horo-rto/TampermonkeyScripts/refs/heads/main/ModExtendedSearch.user.js
+// @updateURL    https://raw.githubusercontent.com/horo-rto/TampermonkeyRtoScripts/refs/heads/main/ModExtendedSearch.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
 // @match        https://rutracker.net/forum/viewtopic.php?t=*
 // @match        https://rutracker.nl/forum/viewtopic.php?t=*
