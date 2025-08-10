@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.4
+// @version      0.2.5
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -372,6 +372,9 @@ function parce_audio(chunk){
                     break;
                 case "MLP FBA":
                     parced.codec = "TrueHD";
+                    break;
+                case "DTS XLL":
+                    parced.codec = "DHS-HD MA";
                     break;
                 default:
                     parced.codec = line.split(" : ")[1];
