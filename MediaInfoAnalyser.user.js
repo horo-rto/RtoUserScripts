@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.3
+// @version      0.2.4
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -369,6 +369,9 @@ function parce_audio(chunk){
                     break;
                 case "AAC LC":
                     parced.codec = "AAC";
+                    break;
+                case "MLP FBA":
+                    parced.codec = "TrueHD";
                     break;
                 default:
                     parced.codec = line.split(" : ")[1];
