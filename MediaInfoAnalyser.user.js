@@ -183,7 +183,6 @@ class Text {
     }else{
         reports = spoiler.split("General<br>");
     }
-    console.log(reports);
     var main = reports[reports.length > 1 ? 1 : 0];
 
     var genrl = null;
