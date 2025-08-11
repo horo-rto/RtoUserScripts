@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.6
+// @version      0.2.7
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -178,12 +178,12 @@ class Text {
             spoiler = element;
 
     var reports;
-    if(spoiler.includes("Формат")){
+    if(spoiler.includes("General")){
         reports = spoiler.split("Общее<br>");
     }else{
         reports = spoiler.split("General<br>");
     }
-    var main = reports[1];
+    var main = reports[reports.length > 1 ? 1 : 0];
 
     var genrl = null;
     var video = null;
