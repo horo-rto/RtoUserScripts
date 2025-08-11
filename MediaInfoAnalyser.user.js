@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.7
+// @version      0.2.8
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -178,11 +178,12 @@ class Text {
             spoiler = element;
 
     var reports;
-    if(spoiler.includes("General")){
+    if(spoiler.includes("Общее")){
         reports = spoiler.split("Общее<br>");
     }else{
         reports = spoiler.split("General<br>");
     }
+    console.log(reports);
     var main = reports[reports.length > 1 ? 1 : 0];
 
     var genrl = null;
@@ -312,8 +313,8 @@ function parce_video(chunk){
             parced.fps = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
             parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
-                .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("kb/s","kbps")
-                .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("mb/s","Mbps");
+                .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
+                .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
             video_bitrate = parced.bitrate;
         }else if (line.includes("Bit depth") || line.includes("Битовая глубина")){
             parced.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
@@ -391,8 +392,8 @@ function parce_audio(chunk){
             if (line.includes("LFE")) parced.lfe = 1;
         }else if (line.includes("Bit rate") || line.includes("Битрейт")){
             parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
-                .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("kb/s","kbps")
-                .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("mb/s","Mbps");
+                .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
+                .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
         }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
             parced.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Stream size") || line.includes("Размер потока")){
