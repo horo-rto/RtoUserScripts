@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.8
+// @version      0.2.9
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -82,6 +82,7 @@ class Audio {
     samplingrate = -1;
     size = -1;
     percentage = -1;
+    delay = "";
     language = "";
     default = 0;
     forced = 0;
@@ -131,7 +132,12 @@ class Audio {
                 line += this.bitrate + " ";
         }
 
-        line += this.samplingrate + "kHz, " + this.language + " " + this.title;
+        line += this.samplingrate + "kHz, ";
+
+        if (this.delay != "")
+            line += "<span style=\"color: red; font-weight: bold;\">" + this.delay + "</span> ";
+
+        line += this.language + " " + this.title;
         return line;
     }
 }
@@ -404,6 +410,8 @@ function parce_audio(chunk){
             else
                 parced.size = size;
             parced.percentage = newline[1].slice(0,-2);
+        }else if (line.includes("Delay relative to video") || line.includes("Задержка видео")){
+            parced.delay = line.split(" : ")[1];
         }else if (line.includes("Language") || line.includes("Язык")){
             parced.language = line.split(" : ")[1];
         }else if (line.includes("Default") || line.includes("По умолчанию")){
