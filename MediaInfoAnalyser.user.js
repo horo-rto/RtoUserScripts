@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.10
+// @version      0.2.11
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -60,10 +60,10 @@ class Video {
                 line += "[" + this.percentage + "%]";
         }
 
-        line += " " + this.codec + "@" + this.bit + "bit ";
+        line += " " + this.codec + "@" + this.bit + "bit";
 
         if (this.crf >= 22)
-            line += "<span style=\"color: red; font-weight: bold;\">crf=" + Number(this.crf).toFixed(1) + "</span>";
+            line += " <span style=\"color: red; font-weight: bold;\">crf=" + Number(this.crf).toFixed(1) + "</span>";
 
         line += ", "+ this.width + "x" + this.height + " " + this.fps + "fps ";
 
