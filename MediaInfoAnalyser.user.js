@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.9
+// @version      0.2.10
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -32,6 +32,7 @@ class Video {
     constructor() { }
 
     codec = "";
+    crf = "";
     hdr = "";
     height = -1;
     width = -1;
@@ -59,7 +60,13 @@ class Video {
                 line += "[" + this.percentage + "%]";
         }
 
-        line += " " + this.codec + "@" + this.bit + "bit, "+ this.width + "x" + this.height + " " + this.fps + "fps ";
+        line += " " + this.codec + "@" + this.bit + "bit ";
+
+        if (this.crf >= 22)
+            line += "<span style=\"color: red; font-weight: bold;\">crf=" + Number(this.crf).toFixed(1) + "</span>";
+
+        line += ", "+ this.width + "x" + this.height + " " + this.fps + "fps ";
+
         if (this.vfr == 1) line += "(VFR) ";
 
         if (this.bitrate == -1)
@@ -300,6 +307,13 @@ function parce_video(chunk){
             switch(line.split(" : ")[1]){
                 case "MPEG-4 Visual":
                     parced.codec = "XviD";
+                    break;
+                case "HEVC":
+                    parced.codec = "HEVC";
+                    var crf = chunk.match(/crf=[\d\.]*/gm);
+                    if (crf != null)
+                        parced.crf = crf[0].split("=")[1];
+
                     break;
                 default:
                     parced.codec = line.split(" : ")[1];
