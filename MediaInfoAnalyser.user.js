@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.11
+// @version      0.2.12
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -17,6 +17,8 @@ var post;
 var video_size;
 var video_bitrate;
 var is_displayed;
+var isRussian = true;
+var isJapanese = false;
 
 class General {
     constructor() { }
@@ -91,6 +93,7 @@ class Audio {
     percentage = -1;
     delay = "";
     language = "";
+    languageError = 0;
     default = 0;
     forced = 0;
     isfirst = 0;
@@ -144,7 +147,12 @@ class Audio {
         if (this.delay != "")
             line += "<span style=\"color: red; font-weight: bold;\">" + this.delay + "</span> ";
 
-        line += this.language + " " + this.title;
+        if (this.languageError == 1)
+            line += "<span style=\"color: red; font-weight: bold;\">" + this.language + "</span>, ";
+        else
+            line += this.language + ", ";
+
+        line += this.title;
         return line;
     }
 }
@@ -155,6 +163,7 @@ class Text {
     codec = "";
     count = -1;
     language = "";
+    languageError = 0;
     default = 0;
     forced = 0;
     isfirst = 0;
@@ -168,8 +177,14 @@ class Text {
         }
         line += (this.forced == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
 
-        line += " " + this.codec + ", " + this.language + ", ";
+        line += " " + this.codec + ", ";
         if (this.count > -1) line += this.count + " lines, ";
+
+        if (this.languageError == 1)
+            line += "<span style=\"color: red; font-weight: bold;\">" + this.language + "</span>, ";
+        else
+            line += this.language + ", ";
+
         line += this.title;
         return line;
     }
@@ -428,6 +443,26 @@ function parce_audio(chunk){
             parced.delay = line.split(" : ")[1];
         }else if (line.includes("Language") || line.includes("Язык")){
             parced.language = line.split(" : ")[1];
+
+            switch (parced.language)
+            {
+                case "Русский":
+                case "Russian":
+                    if (!isRussian)
+                        parced.languageError = 1;
+
+                    break;
+                case "Японский":
+                case "Japaneese":
+                    isRussian = false;
+                    isJapanese = true;
+                    break;
+                default:
+                    isRussian = false;
+                    if (!isRussian || isJapanese)
+                        parced.languageError = 1;
+                    break;
+            }
         }else if (line.includes("Default") || line.includes("По умолчанию")){
             if (line.split(" : ")[1] == "Да" || line.split(" : ")[1] == "Yes")
                 parced.default = 1;
@@ -449,6 +484,8 @@ function parce_text(chunk){
     for (const line of lines) {
         if (line == "Text #1" || line == "Текст #1" || line == "Text" || line == "Текст"){
             parced.isfirst = 1;
+            isRussian = true;
+            isJapanese = false;
         }else if (line.startsWith("Title") || line.startsWith("Заголовок")){
             parced.title = line.split(" : ")[1];
         }else if (line.startsWith("Format ") || line.startsWith("Формат ")){
@@ -457,6 +494,26 @@ function parce_text(chunk){
             parced.count = line.split(" : ")[1];
         }else if (line.includes("Language") || line.includes("Язык")){
             parced.language = line.split(" : ")[1];
+
+            switch (parced.language)
+            {
+                case "Русский":
+                case "Russian":
+                    if (!isRussian)
+                        parced.languageError = 1;
+
+                    break;
+                case "Японский":
+                case "Japaneese":
+                    isRussian = false;
+                    isJapanese = true;
+                    break;
+                default:
+                    isRussian = false;
+                    if (!isRussian || isJapanese)
+                        parced.languageError = 1;
+                    break;
+            }
         }else if (line.includes("Default") || line.includes("По умолчанию")){
             if (line.split(" : ")[1] == "Да" || line.split(" : ")[1] == "Yes")
                 parced.default = 1;
