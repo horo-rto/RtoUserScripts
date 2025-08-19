@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.12
+// @version      0.2.13
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -148,11 +148,12 @@ class Audio {
             line += "<span style=\"color: red; font-weight: bold;\">" + this.delay + "</span> ";
 
         if (this.languageError == 1)
-            line += "<span style=\"color: red; font-weight: bold;\">" + this.language + "</span>, ";
+            line += "<span style=\"color: red; font-weight: bold;\">" + this.language + "</span>";
         else
-            line += this.language + ", ";
+            line += this.language;
 
-        line += this.title;
+        if (this.title != "")
+            line += ", " +this.title;
         return line;
     }
 }
@@ -181,11 +182,12 @@ class Text {
         if (this.count > -1) line += this.count + " lines, ";
 
         if (this.languageError == 1)
-            line += "<span style=\"color: red; font-weight: bold;\">" + this.language + "</span>, ";
+            line += "<span style=\"color: red; font-weight: bold;\">" + this.language + "</span>";
         else
-            line += this.language + ", ";
+            line += this.language;
 
-        line += this.title;
+        if (this.title != "")
+            line += ", " +this.title;
         return line;
     }
 }
@@ -221,6 +223,8 @@ class Text {
 
     var chunks = main.split("<span class=\"post-br\"><br></span>");
 
+    console.log(chunks);
+
     for (const chunk of chunks) {
         if (chunk.includes("File size") || chunk.includes("Размер файла")){
             genrl = parce_general(chunk);
@@ -234,6 +238,7 @@ class Text {
     }
 
     if (reports.length > 2){
+        isRussian = true;
         for (var i = 2; i < reports.length; i++){
             var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
             for (const chunk_extra of chunks_extra) {
@@ -450,16 +455,15 @@ function parce_audio(chunk){
                 case "Russian":
                     if (!isRussian)
                         parced.languageError = 1;
-
                     break;
                 case "Японский":
-                case "Japaneese":
+                case "Japanese":
                     isRussian = false;
                     isJapanese = true;
                     break;
                 default:
                     isRussian = false;
-                    if (!isRussian || isJapanese)
+                    if (isJapanese)
                         parced.languageError = 1;
                     break;
             }
@@ -501,16 +505,15 @@ function parce_text(chunk){
                 case "Russian":
                     if (!isRussian)
                         parced.languageError = 1;
-
                     break;
                 case "Японский":
-                case "Japaneese":
+                case "Japanese":
                     isRussian = false;
                     isJapanese = true;
                     break;
                 default:
                     isRussian = false;
-                    if (!isRussian || isJapanese)
+                    if (isJapanese)
                         parced.languageError = 1;
                     break;
             }
