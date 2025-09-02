@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.13
+// @version      0.2.14
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -354,6 +354,7 @@ function parce_video(chunk){
             parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
                 .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
                 .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+            parced.bitrate = parced.bitrate.replace(",0", "").replace(".0", "");
             video_bitrate = parced.bitrate;
         }else if (line.includes("Bit depth") || line.includes("Битовая глубина")){
             parced.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
@@ -361,7 +362,7 @@ function parce_video(chunk){
             var newline = line.split(" : ")[1].split("(");
             var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
             var value = newline[0].replaceAll(/[0-9,\. ]/g, '');
-            if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" )
+            if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" || value == "ГиБ" )
                 parced.size = size.replace(",", ".")*1024;
             else
                 parced.size = size;
@@ -433,13 +434,14 @@ function parce_audio(chunk){
             parced.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
                 .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
                 .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+            parced.bitrate = parced.bitrate.replace(",0", "").replace(".0", "");
         }else if (line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
             parced.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
         }else if (line.includes("Stream size") || line.includes("Размер потока")){
             var newline = line.split(" : ")[1].split("(");
             var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
             var value = newline[0].replaceAll(/[0-9,\. ]/g, '');
-            if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" )
+            if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" || value == "ГиБ" )
                 parced.size = size.replace(",", ".")*1024;
             else
                 parced.size = size;
