@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.2.14
+// @version      0.2.15
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
 // @match        https://rutracker.net/forum/viewtopic.php?t=*
-// @match        https://rutracker.nl/forum/viewtopic.php?t=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rutracker.org
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -19,6 +18,7 @@ var video_bitrate;
 var is_displayed;
 var isRussian = true;
 var isJapanese = false;
+var ignoreOrder = false;
 
 class General {
     constructor() { }
@@ -223,7 +223,7 @@ class Text {
 
     var chunks = main.split("<span class=\"post-br\"><br></span>");
 
-    console.log(chunks);
+    //console.log(chunks);
 
     for (const chunk of chunks) {
         if (chunk.includes("File size") || chunk.includes("Размер файла")){
@@ -238,6 +238,7 @@ class Text {
     }
 
     if (reports.length > 2){
+        ignoreOrder = true;
         isRussian = true;
         for (var i = 2; i < reports.length; i++){
             var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
@@ -257,7 +258,7 @@ class Text {
 
 function ui(genrl, video, audio, subtl, extra){
     var box = $('<div>', {id: 'mi_box', style:
-                          "position: fixed; bottom:20%; right: -5px; padding: 10px 10px 10px 15px; " +
+                          "position: fixed; top:60%; right: -5px; padding: 10px 10px 10px 15px; " +
                           "background-color: #dee3e7; border-radius: 5px; border: 1px solid #80808080;" +
                           "font-family: \"Lucida Console\", Consolas, monospace; font-size: 12px; line-height: 14px;"});
     $('body').append(box);
@@ -455,7 +456,7 @@ function parce_audio(chunk){
             {
                 case "Русский":
                 case "Russian":
-                    if (!isRussian)
+                    if (!isRussian && !ignoreOrder)
                         parced.languageError = 1;
                     break;
                 case "Японский":
@@ -465,7 +466,7 @@ function parce_audio(chunk){
                     break;
                 default:
                     isRussian = false;
-                    if (isJapanese)
+                    if (isJapanese && !ignoreOrder)
                         parced.languageError = 1;
                     break;
             }
