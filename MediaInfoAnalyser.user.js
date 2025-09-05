@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO MediaInfo analyser
 // @namespace    http://tampermonkey.net/
-// @version      0.3.0
+// @version      0.3.1
 // @description  MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -16,11 +16,43 @@ var post;
 
 var media_info;
 
+var settings;
+
 // todo:
 // setting with ui
 // clean cashe
 
-var is_displayed;
+class Settings{
+    constructor(){
+        var cached_settings = GM_getValue("release_assistance_settings") ?? null;
+        console.log(cached_settings);
+
+        try {
+            var parsed = JSON.parse(cached_settings);
+
+            this.display = parsed.display ?? this.#default.display;
+            this.parce_files = parsed.parce_files ?? this.#default.parce_files;
+            this.parce_shiki = parsed.parce_shiki ?? this.#default.parce_shiki;
+            this.show_shiki_synonyms = parsed.show_shiki_synonyms ?? this.#default.show_shiki_synonyms;
+            this.show_anydb_synonyms = parsed.show_anydb_synonyms ?? this.#default.show_anydb_synonyms;
+        } catch (e) {
+            console.warn("Settings reading error: " + e.message + "; settings are set to default.");
+            Object.assign(this, this.#default);
+        }
+    }
+
+    save(){
+        GM_setValue("release_assistance_settings", JSON.stringify(this));
+    }
+
+    #default = {
+        display : true,
+        parce_files : true,
+        parce_shiki : true,
+        show_shiki_synonyms: true,
+        show_anydb_synonyms: true
+    }
+}
 
 class MediaInfo{
     genrl = null;
@@ -34,7 +66,20 @@ class MediaInfo{
         this.isJapanese = false;
     }
 
-    parse(reports){
+    parse(){
+        var spoilers = post.innerHTML.match(/<div class="sp-wrap">.*?<div class="sp-body">.*?<\/div>\n<\/div>/gms);
+        for (const spoiler of spoilers){
+            if (spoiler.includes("Frame rate") || spoiler.includes("Частота кадров")){
+                var mi_spoiler = spoiler;
+            }
+        }
+
+        if(mi_spoiler.includes("Общее")){
+            var reports = mi_spoiler.split("Общее<br>");
+        }else{
+            reports = mi_spoiler.split("General<br>");
+        }
+
         var main = reports[reports.length > 1 ? 1 : 0];
 
         var chunks = main.split("<span class=\"post-br\"><br></span>");
@@ -249,7 +294,7 @@ class Audio {
 
         var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
         for (const line of lines) {
-            if (line == "Audio #1" || line == "Аудио #1" || line == "Audio" || line == "Аудио"){
+            if (line.includes("Audio #1") || line.includes("Аудио #1") || line.includes("Audio") || line.includes("Аудио")){
                 this.isfirst = 1;
                 media_info.isRussian = true;
                 media_info.isJapanese = false;
@@ -419,7 +464,7 @@ class Text {
     constructor(chunk) {
         var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
         for (const line of lines) {
-            if (line == "Text #1" || line == "Текст #1" || line == "Text" || line == "Текст"){
+            if (line.includes("Text #1") || line.includes("Текст #1") || line.includes("Text") || line.includes("Текст")){
                 this.isfirst = 1;
                 media_info.isRussian = true;
                 media_info.isJapanese = false;
@@ -498,12 +543,10 @@ class Text {
 }
 
 (function() {
-    console.log("RTO mediainfo analyser")
-
+    console.log("RTO mediainfo analyser");
     if(window.location.href.match(/start=\d+/) != null) return;
 
-    is_displayed = GM_getValue("mi_box_displayed") ?? true;
-
+    settings = new Settings();
     post = $('#topic_main > tbody > tr > .td2 > .post_wrap > .post_body')[0];
 
     create_ui();
@@ -512,26 +555,14 @@ class Text {
 })();
 
 function process_mi(){
-    var spoilers = post.innerHTML.match(/<div class="sp-wrap">.*?<div class="sp-body">.*?<\/div>\n<\/div>/gms);
-    for (const spoiler of spoilers){
-        if (spoiler.includes("Frame rate") || spoiler.includes("Частота кадров")){
-            var mi_spoiler = spoiler;
-        }
+    try{
+        media_info = new MediaInfo();
+        media_info.parse();
+        console.log( media_info.dump() );
+        $('#mi_data').append(media_info.toString());
+    } catch (e) {
+        console.error("Media info parcing error:", e);
     }
-
-    if(mi_spoiler.includes("Общее")){
-        var reports = mi_spoiler.split("Общее<br>");
-    }else{
-        reports = mi_spoiler.split("General<br>");
-    }
-
-    media_info = new MediaInfo();
-    media_info.parse(reports)
-
-    console.log( media_info.dump() );
-    console.log( media_info.toString() );
-
-    $('#mi_data').append( media_info.toString() );
 }
 
 /// common ui code
@@ -563,18 +594,17 @@ function create_ui(){
     update_ui_state();
 }
 function toggle() {
-    is_displayed = !is_displayed;
+    settings.display = !settings.display;
+    settings.save();
     update_ui_state();
 }
 function update_ui_state() {
-    GM_setValue("mi_box_displayed", is_displayed);
-
-    if(is_displayed){
+    if(settings.display){
         $('#assist_box')[0].style.transform = "translate(0, 0)";
     }else{
         $('#assist_box')[0].style.transform = "translate(calc(100% - 20px), 0)";
     }
 
-    $('#assist_box_arrow_right')[0].style.display = is_displayed ? "block" : "none";
-    $('#assist_box_arrow_left')[0].style.display = is_displayed ? "none" : "block";
+    $('#assist_box_arrow_right')[0].style.display = settings.display ? "block" : "none";
+    $('#assist_box_arrow_left')[0].style.display = settings.display ? "none" : "block";
 }
