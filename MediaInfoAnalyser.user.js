@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.4.1
+// @version      0.4.2
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -655,10 +655,6 @@ class Folder{
 function init_files_processing(){
     try{
         var is_completed = check_torrent_status();
-        console.log("Проверять проверенное: ", settings.parce_files_on_completed);
-        console.log("Проверена? ", is_completed);
-        console.log(this.parce_files_on_completed || !is_completed);
-        console.log(settings.parce_files && (settings.parce_files_on_completed || !is_completed));
         if (settings.parce_files && (settings.parce_files_on_completed || !is_completed)){
             var topic_id = window.location.href.match(/\d+/)[0];
             get_ajax("https://rutracker.org/forum/viewtorrent.php", 'POST',
@@ -677,26 +673,22 @@ function check_torrent_status(){
 function files_processing(){
     if (this.status >= 400) {
         console.log('Returned ' + this.status + ': ' + this.responseText);
-        return
+        return;
     }
 
     if (this.responseText.startsWith("Torrent not found")){
         update_ui_errors();
-        return
+        return;
     }
-
-    //var filelist = this.responseText;
-    //var lines = filelist.match(/<b>.*?<\/b>/gm);
-    //lines = Array.from(lines, (x) => x.replace("<b>", "").replace("<\/b>", ""));
-    //console.log(lines);
-
-    //var video_files = Array.from(lines.filter(x => x.includes(".mkv") || x.includes(".mp4") || x.includes(".avi")), x => x.replace(".mkv", "").replace(".mp4", "").replace(".avi", ""));
-    //var sound_files = lines.filter(x => x.includes(".mka"));
-    //var subtl_files = lines.filter(x => x.includes(".ass") || x.includes(".srt"));
 
     var parser = new DOMParser();
     var doc = parser.parseFromString(this.responseText, "text/html");
     var treeObj = htmlListToObj(doc.getElementsByClassName("ftree")[0].firstElementChild);
+
+    if (treeObj.nodes == null) {
+        update_ui_errors();
+        return;
+    }
 
     var root = new Folder(treeObj, "root");
     var folders = [];
