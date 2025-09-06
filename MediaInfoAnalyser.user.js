@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         RTO MediaInfo analyser
+// @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.3.1
-// @description  MediaInfo analyser!
+// @version      0.4.0
+// @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
@@ -18,6 +18,9 @@ var media_info;
 
 var settings;
 
+var errors = [];
+var warnings = [];
+
 // todo:
 // setting with ui
 // clean cashe
@@ -32,6 +35,7 @@ class Settings{
 
             this.display = parsed.display ?? this.#default.display;
             this.parce_files = parsed.parce_files ?? this.#default.parce_files;
+            this.parce_files_on_completed = parsed.parce_files_on_completed ?? this.#default.parce_files_on_completed;
             this.parce_shiki = parsed.parce_shiki ?? this.#default.parce_shiki;
             this.show_shiki_synonyms = parsed.show_shiki_synonyms ?? this.#default.show_shiki_synonyms;
             this.show_anydb_synonyms = parsed.show_anydb_synonyms ?? this.#default.show_anydb_synonyms;
@@ -48,6 +52,7 @@ class Settings{
     #default = {
         display : true,
         parce_files : true,
+        parce_files_on_completed: true,
         parce_shiki : true,
         show_shiki_synonyms: true,
         show_anydb_synonyms: true
@@ -117,8 +122,8 @@ class MediaInfo{
 
         if (this.video.bitrate == -1 && this.genrl != null) {
             out.push(this.genrl.toString());
+            out.push("<hr>");
         }
-        out.push("<hr>");
         out.push(this.video.toString());
         out.push("<hr>");
         out.push(Array.from(this.audio, x => x.toString()).join("<\/br>"));
@@ -547,11 +552,23 @@ class Text {
     if(window.location.href.match(/start=\d+/) != null) return;
 
     settings = new Settings();
+
     post = $('#topic_main > tbody > tr > .td2 > .post_wrap > .post_body')[0];
 
     create_ui();
 
+    $("#input_parce_shiki").prop( "disabled", true );
+    $("#input_show_shiki_synonyms").prop( "disabled", true );
+    $("#input_show_anydb_synonyms").prop( "disabled", true );
+    $("#input_parce_files_on_completed").prop( "disabled", true );
+
+    $("#input_parce_shiki").prop( "checked", false );
+    $("#input_show_shiki_synonyms").prop( "checked", false );
+    $("#input_show_anydb_synonyms").prop( "checked", false );
+    $("#input_parce_files_on_completed").prop( "checked", false );
+
     process_mi();
+    init_files_processing();
 })();
 
 function process_mi(){
@@ -565,6 +582,136 @@ function process_mi(){
     }
 }
 
+// files processing
+
+function init_files_processing(){
+    try{
+        if (settings.parce_files){
+            var topic_id = window.location.href.match(/\d+/)[0];
+            get_ajax("https://rutracker.org/forum/viewtorrent.php", 'POST',
+                     'application/x-www-form-urlencoded; charset=UTF-8', "t="+topic_id, files_processing);
+        }else{
+            update_errors();
+        }
+    } catch (e) {
+        console.error("Files processing error:", e);
+    }
+}
+function files_processing(){
+    if (this.status >= 400) {
+        console.log('Returned ' + this.status + ': ' + this.responseText);
+        return
+    }
+
+    var filelist = this.responseText;
+    var lines = filelist.match(/<b>.*?<\/b>/gm);
+    lines = Array.from(lines, (x) => x.replace("<b>", "").replace("<\/b>", ""));
+
+    var video_files = Array.from(lines.filter(x => x.includes(".mkv") || x.includes(".mp4") || x.includes(".avi")), x => x.replace(".mkv", "").replace(".mp4", "").replace(".avi", ""));
+    var sound_files = lines.filter(x => x.includes(".mka"));
+    var subtl_files = lines.filter(x => x.includes(".ass") || x.includes(".srt"));
+
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(this.responseText, "text/html");
+    var treeObj = htmlListToObj(doc.getElementsByClassName("ftree")[0].firstElementChild);
+    var rootFiles = Array.from(treeObj.nodes.filter((x) => x.type != "dir"), x => x.name.replace(".mkv", "").replace(".mp4", "").replace(".avi", ""));
+
+    var indexStart = 0;
+    var indexEnd = 0;
+
+    if (rootFiles.length > 1) {
+        var is_same = true;
+        for (let i = 0; i < rootFiles[0].length; i++){
+            if (rootFiles[0].charAt(i) == rootFiles[1].charAt(i)){
+                if (is_same){
+                    indexStart = i;
+                }else{
+                    if (indexEnd == 0){
+                        indexEnd = i;
+                    }
+                }
+            }else{
+                is_same = false;
+            }
+        }
+    }
+
+    for (let trnsl of [...sound_files, ...subtl_files]) {
+        let met = false;
+        for (let vid of video_files) {
+            if (trnsl.startsWith(vid)){
+                met = true;
+            }
+        }
+        if (met == false){
+            errors.push("У перевода нет видео: " + trnsl);
+        }
+    }
+
+    for (let rt of rootFiles) {
+        if(rt.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
+            errors.push("Запрещенные символы: " + rt);
+        }
+    }
+
+    if (sound_files.length > 0 || subtl_files.length > 0) {
+        for (let rt of rootFiles) {
+            if(!sound_files.join("|||").replace("&#039;", "'").includes(rt.replace("&amp;", "&")) &&
+               !subtl_files.join("|||").replace("&#039;", "'").includes(rt.replace("&amp;", "&"))) {
+                //console.log(subtl_files);
+                //console.log(rt);
+                errors.push("Нет перевода на эпизод " + (indexStart < indexEnd ? rt.slice(indexStart, indexEnd) : rt));
+            }
+        }
+    }
+
+    var folders = [];
+    recurcive_folder(treeObj);
+    function recurcive_folder(parent){
+        for (var folder of Array.from(parent.nodes.filter(x => x.type == "dir"))) {
+            if (folder.nodes.filter(x => x.type != "dir").length > 0){
+                if (folder.nodes.filter(x => x.name.endsWith(".mka") || x.name.endsWith(".ass") || x.name.endsWith(".srt")).length > 0){
+                    folders.push(folder);
+                }
+            }
+            recurcive_folder(folder);
+        }
+    }
+
+    console.log(folders);
+
+    for (let folder of folders) {
+        if (folder.name.includes("Extra")){
+            continue;
+        }
+
+        var files_in_folder = folder.nodes.filter(x => x.type != "dir");
+        for (let vid of rootFiles) {
+            var has_trnsl = false;
+            for (let trnsl of files_in_folder) {
+                if (trnsl.name.startsWith(vid)){
+                    has_trnsl = true;
+                }
+            }
+            if (has_trnsl == false){
+                warnings.push("В папке " + folder.name + " нет перевода на эпизод " + (indexStart < indexEnd ? vid.slice(indexStart, indexEnd) : vid));
+            }
+        }
+
+        for (let i = 0; i < files_in_folder.length; i++) {
+            for (let j = 0; j < i; j++) {
+                if (files_in_folder[i].size == files_in_folder[j].size){
+                warnings.push("В папке " + folder.name + " у эпизодов " +
+                              (indexStart < indexEnd ? files_in_folder[j].name.slice(indexStart, indexEnd) : files_in_folder[j].name) + " и " +
+                              (indexStart < indexEnd ? files_in_folder[i].name.slice(indexStart, indexEnd) : files_in_folder[i].name) + " одинаковый размер файлов.");
+                }
+            }
+        }
+    }
+
+    update_errors();
+}
+
 /// common ui code
 
 function create_ui(){
@@ -572,9 +719,10 @@ function create_ui(){
 
     let box = $('<div>',
                 {id: 'assist_box',
-                 style: "position: fixed; top:60%; right: -5px; padding: 10px 10px 10px 15px; " +
+                 style: "position: fixed; bottom:10%; right: -5px; padding: 0px 10px 0px 15px; " +
                  "background-color: #dee3e7; border-radius: 5px; border: 1px solid #80808080;" +
-                 "font-family: \"Lucida Console\", Consolas, monospace; font-size: 12px; line-height: 14px;"
+                 "font-family: \"Lucida Console\", Consolas, monospace; font-size: 12px; line-height: 14px; " +
+                 "transition: 0.6s ease;"
                 }).appendTo(jQuery('body'));
 
     box.append([
@@ -582,13 +730,40 @@ function create_ui(){
             $('<div>', {id: 'assist_box_arrow_right', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯈"}),
             $('<div>', {id: 'assist_box_arrow_left', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯇"})
         ]),
-        $('<div>', {id: 'shiki_data', style: ""}),
-        $('<hr>'),
-        $('<div>', {id: 'errors_data', style: ""}),
-        $('<hr>'),
-        $('<div>', {id: 'warnings_data', style: ""}),
-        $('<hr>'),
-        $('<div>', {id: 'mi_data', style: ""})
+        $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные [не] загружаются..."}),
+        $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
+        $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
+        $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px;  border-top: 1px solid #80808080;"}),
+        $('<div>', {style: "position: absolute; right: 6px; bottom: 3px; width: 15px; height: 15px; cursor: pointer;",
+                    html: "<?xml version=\"1.0\" standalone=\"no\"?><!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 20010904//EN\" \"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\">"+
+                    "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280.000000 1280.000000\" preserveAspectRatio=\"xMidYMid meet\">"+
+                    "<g transform=\"translate(0.000000,1280.000000) scale(0.100000,-0.100000)\" fill=\"#808080\" stroke=\"none\">"+
+                    "<path d=\"M5309 12413 c-6 -16 -109 -302 -229 -638 -773 -2158 -675 -1895 -705 -1895 -21 0 -563 97 -2080 374 -520 95 -571 102 -583 87 -11 -14 -1031 -1782 -1060 -1837 "+
+                    "-12 -23 -26 -6 1611 -1942 105 -124 128 -157 121 -172 -5 -10 -191 -233 -414 -497 -1374 -1625 -1331 -1573 -1319 -1594 6 -12 241 -420 521 -907 281 -488 518 -900 527 "+
+                    "-915 15 -27 19 -28 66 -22 28 3 592 105 1255 225 1329 241 1374 249 1378 245 1 -1 147 -405 323 -896 176 -492 382 -1067 458 -1279 l139 -385 1080 -3 1081 -2 21 57 c21 "+
+                    "57 142 393 480 1338 93 259 221 616 285 795 65 179 122 337 127 352 8 22 14 26 36 22 258 -46 1610 -291 2043 -369 317 -58 585 -105 595 -105 15 0 138 206 524 877 278 "+
+                    "482 520 902 538 934 l32 58 -662 783 c-364 431 -754 892 -867 1026 -113 134 -210 252 -215 262 -7 16 5 35 61 102 1506 1778 1682 1990 1671 2012 -6 11 -190 332 -408 711 "+
+                    "-723 1254 -655 1140 -681 1137 -26 -4 -776 -139 -1894 -342 -396 -72 -731 -129 -744 -128 -23 3 -45 60 -338 878 -172 481 -378 1055 -457 1275 l-144 400 -1081 3 -1081 2 -11 "+
+                    "-27z m1261 -4064 c606 -56 1140 -380 1474 -896 487 -753 381 -1776 -250 -2418 -310 -314 -684 -505 -1119 -570 -144 -21 -405 -21 -550 0 -417 61 -800 251 -1095 545 -167 166 "+
+                    "-280 326 -385 543 -143 295 -204 586 -192 917 15 386 124 721 338 1035 396 581 1086 908 1779 844z\"/></g></svg>",
+                    click: function( event ) { $('#assist_box_settings').animate({ height: 'toggle' }); }}),
+        $('<div>', {id: 'assist_box_settings', style: "bottom:0px; left: 0px; width: 100%; border-top: 1px solid #80808080; display: none;"}).append([
+            $('<div>', {style: "margin-top: 10px; margin-bottom: 10px;"}).append([
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_shiki' }),
+                $( '<label>', { html: 'Запрашивать информацию из API Shikimori (требует дополнительный запрос к API)', style: 'margin-left: 2px;',  for: 'input_parce_shiki' }),
+                $('<br>'),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_show_shiki_synonyms' }),
+                $( '<label>', { html: 'Отображать синонимы с Shikimori', style: 'margin-left: 2px;',  for: 'input_show_shiki_synonyms' }),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_anydb_synonyms' }),
+                $( '<label>', { html: 'Отображать синонимы с AniDB', style: 'margin-left: 2px;',  for: 'input_show_anydb_synonyms' }),
+                $('<br>'),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files' }),
+                $( '<label>', { html: 'Анализировать файлы в раздаче (требует дополнительный запрос к трекеру)', style: 'margin-left: 2px;',  for: 'input_parce_files' }),
+                $('<br>'),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files_on_completed' }),
+                $( '<label>', { html: 'Анализировать файлы в проверенных раздачах', style: 'margin-left: 2px;',  for: 'input_parce_files_on_completed' }),
+            ])
+        ])
     ]);
 
     update_ui_state();
@@ -607,4 +782,71 @@ function update_ui_state() {
 
     $('#assist_box_arrow_right')[0].style.display = settings.display ? "block" : "none";
     $('#assist_box_arrow_left')[0].style.display = settings.display ? "none" : "block";
+
+    $("#input_parce_shiki").prop( "checked", settings.parce_shiki );
+    $("#input_show_shiki_synonyms").prop( "checked", settings.show_shiki_synonyms );
+    $("#input_show_anydb_synonyms").prop( "checked", settings.show_anydb_synonyms );
+    $("#input_parce_files").prop( "checked", settings.parce_files );
+    $("#input_parce_files_on_completed").prop( "checked", settings.parce_files_on_completed );
+    $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
 }
+function update_settings(){
+    settings.parce_shiki = $('#input_parce_shiki').is(":checked");
+    settings.show_shiki_synonyms = $('#input_show_shiki_synonyms').is(":checked");
+    settings.show_anydb_synonyms = $('#input_show_anydb_synonyms').is(":checked");
+    settings.parce_files = $('#input_parce_files').is(":checked");
+    settings.parce_files_on_completed = $('#input_parce_files_on_completed').is(":checked");
+    //$("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
+    settings.save();
+}
+function update_errors(){
+    if (errors.length > 0){
+        $('#errors_data').show();
+        $('#errors_data').css("color", "red");
+        $('#errors_data').css("font-weight", "bold");
+        $('#errors_data').html(errors.join("<\/br>"));
+    }else{
+        $('#errors_data').hide();
+    }
+
+    if (warnings.length > 0){
+        $('#warnings_data').show();
+        $('#warnings_data').css("color", "darkorange");
+        $('#warnings_data').css("font-weight", "bold");
+        $('#warnings_data').html(warnings.join("<\/br>"));
+    }else{
+        $('#warnings_data').hide();
+    }
+}
+
+// core web & data
+
+function get_ajax(url, type, content_type, args, event_handler) {
+    var handler_wrapper = function() {
+        if(this.readyState == XMLHttpRequest.DONE && this.status == 200) {
+            event_handler.call(this);
+        }
+    }
+    var req = new XMLHttpRequest();
+    req.onreadystatechange = handler_wrapper;
+    req.open(type, url, true);
+    req.setRequestHeader('content-type', content_type);
+    req.send(args);
+}
+
+function htmlListToObj(element) {
+    var o = {};
+    o.name = element.firstElementChild.innerHTML.replace("<b>", "").replace("<\/b><s><\/s>","").replace(/<i>\d*?<\/i>/,"");
+    o.size = element.firstElementChild.innerHTML.replace(/.*?<\/b><s><\/s><i>/, "").replace(/<\/i>/,"");
+    o.type = element.className;
+    o.nodes = [];
+    [].slice.call(element.children).filter(function(e) {
+        return e.tagName.toLowerCase() === 'ul';
+    }).forEach(function(ul) {
+        [].slice.call(ul.children).forEach(function(li) {
+           o.nodes.push(htmlListToObj(li));
+        });
+    });
+    return o;
+}
+
