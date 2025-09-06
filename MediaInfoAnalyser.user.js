@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.4.0
+// @version      0.4.1
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -20,9 +20,9 @@ var settings;
 
 var errors = [];
 var warnings = [];
+var size_warnings = [];
 
 // todo:
-// setting with ui
 // clean cashe
 
 class Settings{
@@ -35,6 +35,7 @@ class Settings{
 
             this.display = parsed.display ?? this.#default.display;
             this.parce_files = parsed.parce_files ?? this.#default.parce_files;
+            this.show_same_size_files = parsed.show_same_size_files ?? this.#default.show_same_size_files;
             this.parce_files_on_completed = parsed.parce_files_on_completed ?? this.#default.parce_files_on_completed;
             this.parce_shiki = parsed.parce_shiki ?? this.#default.parce_shiki;
             this.show_shiki_synonyms = parsed.show_shiki_synonyms ?? this.#default.show_shiki_synonyms;
@@ -52,6 +53,7 @@ class Settings{
     #default = {
         display : true,
         parce_files : true,
+        show_same_size_files: true,
         parce_files_on_completed: true,
         parce_shiki : true,
         show_shiki_synonyms: true,
@@ -560,12 +562,10 @@ class Text {
     $("#input_parce_shiki").prop( "disabled", true );
     $("#input_show_shiki_synonyms").prop( "disabled", true );
     $("#input_show_anydb_synonyms").prop( "disabled", true );
-    $("#input_parce_files_on_completed").prop( "disabled", true );
 
     $("#input_parce_shiki").prop( "checked", false );
     $("#input_show_shiki_synonyms").prop( "checked", false );
     $("#input_show_anydb_synonyms").prop( "checked", false );
-    $("#input_parce_files_on_completed").prop( "checked", false );
 
     process_mi();
     init_files_processing();
@@ -575,8 +575,11 @@ function process_mi(){
     try{
         media_info = new MediaInfo();
         media_info.parse();
-        console.log( media_info.dump() );
-        $('#mi_data').append(media_info.toString());
+
+        if (media_info.video != null){
+            console.log( media_info.dump() );
+            $('#mi_data').append(media_info.toString());
+        }
     } catch (e) {
         console.error("Media info parcing error:", e);
     }
@@ -584,18 +587,92 @@ function process_mi(){
 
 // files processing
 
+class Folder{
+    constructor(folder, type) {
+        this.name = folder.name
+            .replace("&amp;", "&");
+
+        this.files = folder.nodes.filter(x => x.type != "dir");
+        this.files = this.files.filter(x => x.name.includes(".mkv") ||
+                                            x.name.includes(".mp4") ||
+                                            x.name.includes(".avi") ||
+                                            x.name.includes(".mka") ||
+                                            x.name.includes(".ass") ||
+                                            x.name.includes(".srt"));
+
+        if(type == "root"){
+            for (let file of this.files) {
+                file.name = file.name.replace(".mkv", "").replace(".mp4", "").replace(".avi", "")
+            }
+        }
+
+        if (this.name.includes("Extra") ||
+            this.name.includes("NC") ||
+            this.name.includes("PV") ||
+            this.name.includes("CM") ||
+            this.name.includes("Special") ||
+            this.name.includes("Bonus") ||
+            this.files.length == 0){
+            this.ignore = true;
+        }
+
+        this.calcOffset();
+    }
+
+    calcOffset(){
+        this.cutFromStart = 0;
+        this.cutFromEnd = 0;
+
+        if (this.files.length > 1){// && this.files[0].name.length == this.files[this.files.length-1].name.length) {
+            var is_same = true;
+            for (let i = 0; i < this.files[0].name.length; i++){
+                if (this.files[0].name.charAt(i) == this.files[this.files.length-1].name.charAt(i)){
+                    if (is_same){
+                        this.cutFromStart = i;
+                    }
+                }else{
+                    is_same = false;
+                }
+            }
+
+            is_same = true;
+            for (let i = 0; i < this.files[0].name.length; i++){
+                if (this.files[0].name.charAt(this.files[0].name.length - i) == this.files[this.files.length-1].name.charAt(this.files[this.files.length-1].name.length - i)){
+                    if (is_same){
+                        this.cutFromEnd = i;
+                    }
+                }else{
+                    is_same = false;
+                }
+            }
+        }
+    }
+
+    cut(filename){
+        return filename.slice(this.cutFromStart, -1*this.cutFromEnd);
+    }
+}
 function init_files_processing(){
     try{
-        if (settings.parce_files){
+        var is_completed = check_torrent_status();
+        console.log("Проверять проверенное: ", settings.parce_files_on_completed);
+        console.log("Проверена? ", is_completed);
+        console.log(this.parce_files_on_completed || !is_completed);
+        console.log(settings.parce_files && (settings.parce_files_on_completed || !is_completed));
+        if (settings.parce_files && (settings.parce_files_on_completed || !is_completed)){
             var topic_id = window.location.href.match(/\d+/)[0];
             get_ajax("https://rutracker.org/forum/viewtorrent.php", 'POST',
                      'application/x-www-form-urlencoded; charset=UTF-8', "t="+topic_id, files_processing);
         }else{
-            update_errors();
+            update_ui_errors();
         }
     } catch (e) {
         console.error("Files processing error:", e);
     }
+}
+function check_torrent_status(){
+    var status = $('#tor-status-resp > .tor-icon')[0];
+    return status.innerHTML == "√" || status.innerHTML == "#" || status.innerHTML == "T";
 }
 function files_processing(){
     if (this.status >= 400) {
@@ -603,113 +680,109 @@ function files_processing(){
         return
     }
 
-    var filelist = this.responseText;
-    var lines = filelist.match(/<b>.*?<\/b>/gm);
-    lines = Array.from(lines, (x) => x.replace("<b>", "").replace("<\/b>", ""));
+    if (this.responseText.startsWith("Torrent not found")){
+        update_ui_errors();
+        return
+    }
 
-    var video_files = Array.from(lines.filter(x => x.includes(".mkv") || x.includes(".mp4") || x.includes(".avi")), x => x.replace(".mkv", "").replace(".mp4", "").replace(".avi", ""));
-    var sound_files = lines.filter(x => x.includes(".mka"));
-    var subtl_files = lines.filter(x => x.includes(".ass") || x.includes(".srt"));
+    //var filelist = this.responseText;
+    //var lines = filelist.match(/<b>.*?<\/b>/gm);
+    //lines = Array.from(lines, (x) => x.replace("<b>", "").replace("<\/b>", ""));
+    //console.log(lines);
+
+    //var video_files = Array.from(lines.filter(x => x.includes(".mkv") || x.includes(".mp4") || x.includes(".avi")), x => x.replace(".mkv", "").replace(".mp4", "").replace(".avi", ""));
+    //var sound_files = lines.filter(x => x.includes(".mka"));
+    //var subtl_files = lines.filter(x => x.includes(".ass") || x.includes(".srt"));
 
     var parser = new DOMParser();
     var doc = parser.parseFromString(this.responseText, "text/html");
     var treeObj = htmlListToObj(doc.getElementsByClassName("ftree")[0].firstElementChild);
-    var rootFiles = Array.from(treeObj.nodes.filter((x) => x.type != "dir"), x => x.name.replace(".mkv", "").replace(".mp4", "").replace(".avi", ""));
 
-    var indexStart = 0;
-    var indexEnd = 0;
-
-    if (rootFiles.length > 1) {
-        var is_same = true;
-        for (let i = 0; i < rootFiles[0].length; i++){
-            if (rootFiles[0].charAt(i) == rootFiles[1].charAt(i)){
-                if (is_same){
-                    indexStart = i;
-                }else{
-                    if (indexEnd == 0){
-                        indexEnd = i;
-                    }
-                }
-            }else{
-                is_same = false;
-            }
-        }
-    }
-
-    for (let trnsl of [...sound_files, ...subtl_files]) {
-        let met = false;
-        for (let vid of video_files) {
-            if (trnsl.startsWith(vid)){
-                met = true;
-            }
-        }
-        if (met == false){
-            errors.push("У перевода нет видео: " + trnsl);
-        }
-    }
-
-    for (let rt of rootFiles) {
-        if(rt.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
-            errors.push("Запрещенные символы: " + rt);
-        }
-    }
-
-    if (sound_files.length > 0 || subtl_files.length > 0) {
-        for (let rt of rootFiles) {
-            if(!sound_files.join("|||").replace("&#039;", "'").includes(rt.replace("&amp;", "&")) &&
-               !subtl_files.join("|||").replace("&#039;", "'").includes(rt.replace("&amp;", "&"))) {
-                //console.log(subtl_files);
-                //console.log(rt);
-                errors.push("Нет перевода на эпизод " + (indexStart < indexEnd ? rt.slice(indexStart, indexEnd) : rt));
-            }
-        }
-    }
-
+    var root = new Folder(treeObj, "root");
     var folders = [];
+    var files = [];
     recurcive_folder(treeObj);
     function recurcive_folder(parent){
-        for (var folder of Array.from(parent.nodes.filter(x => x.type == "dir"))) {
-            if (folder.nodes.filter(x => x.type != "dir").length > 0){
-                if (folder.nodes.filter(x => x.name.endsWith(".mka") || x.name.endsWith(".ass") || x.name.endsWith(".srt")).length > 0){
-                    folders.push(folder);
-                }
+        for (var node of parent.nodes) {
+            if (node.type == "dir"){
+                folders.push(new Folder(node));
+                recurcive_folder(node);
+            }else{
+                files.push(node);
             }
-            recurcive_folder(folder);
         }
     }
 
+    for (let file of root.files) {
+        if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
+            errors.push("Запрещенные символы: " + file);
+        }
+    }
+    for (let folder of folders) {
+        for (let file of folder.files) {
+            if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
+                errors.push("Запрещенные символы: " + file);
+            }
+        }
+    }
+
+    folders = folders.filter(x => !x.ignore);
+
+    console.log(root);
     console.log(folders);
 
+    for (let episode of root.files) {
+        let noTranslation = true;
+        for (let folder of folders) {
+            for (let trnsl of folder.files) {
+                if (trnsl.name.startsWith(episode.name)){
+                    noTranslation = false;
+                }
+            }
+        }
+        if (noTranslation){
+            errors.push("Нет перевода на эпизод " + root.cut(episode.name));
+        }
+    }
+
     for (let folder of folders) {
-        if (folder.name.includes("Extra")){
-            continue;
+        for (let trnsl of folder.files) {
+            let has_video = false;
+            for (let episode of root.files) {
+                if (trnsl.name.startsWith(episode.name)){
+                    has_video = true;
+                }
+            }
+            if (!has_video){
+                errors.push("В папке " + folder.name + " у перевода нет видео: " + trnsl.name);
+            }
         }
 
-        var files_in_folder = folder.nodes.filter(x => x.type != "dir");
-        for (let vid of rootFiles) {
+        for (let episode of root.files) {
             var has_trnsl = false;
-            for (let trnsl of files_in_folder) {
-                if (trnsl.name.startsWith(vid)){
+            for (let trnsl of folder.files) {
+                if (trnsl.name.startsWith(episode.name)){
                     has_trnsl = true;
                 }
             }
-            if (has_trnsl == false){
-                warnings.push("В папке " + folder.name + " нет перевода на эпизод " + (indexStart < indexEnd ? vid.slice(indexStart, indexEnd) : vid));
+            if (!has_trnsl){
+                warnings.push("В папке " + folder.name + " нет перевода на эпизод " + root.cut(episode.name));
+                console.log(folder);
             }
         }
 
-        for (let i = 0; i < files_in_folder.length; i++) {
+        for (let i = 0; i < folder.files.length; i++) {
             for (let j = 0; j < i; j++) {
-                if (files_in_folder[i].size == files_in_folder[j].size){
-                warnings.push("В папке " + folder.name + " у эпизодов " +
-                              (indexStart < indexEnd ? files_in_folder[j].name.slice(indexStart, indexEnd) : files_in_folder[j].name) + " и " +
-                              (indexStart < indexEnd ? files_in_folder[i].name.slice(indexStart, indexEnd) : files_in_folder[i].name) + " одинаковый размер файлов.");
+                if (folder.files[i].size == folder.files[j].size){
+                    size_warnings.push("В папке " + folder.name + " у эпизодов " +
+                                       folder.cut(folder.files[j].name) + " и " +
+                                       folder.cut(folder.files[i].name) + " одинаковый размер файлов.");
                 }
             }
         }
     }
 
-    update_errors();
+    update_ui_errors();
 }
 
 /// common ui code
@@ -750,18 +823,20 @@ function create_ui(){
         $('<div>', {id: 'assist_box_settings', style: "bottom:0px; left: 0px; width: 100%; border-top: 1px solid #80808080; display: none;"}).append([
             $('<div>', {style: "margin-top: 10px; margin-bottom: 10px;"}).append([
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_shiki' }),
-                $( '<label>', { html: 'Запрашивать информацию из API Shikimori (требует дополнительный запрос к API)', style: 'margin-left: 2px;',  for: 'input_parce_shiki' }),
+                $( '<label>', { html: 'Запрашивать информацию из API Shikimori (требует дополнительный запрос к API)', style: 'margin-left: 2px;', for: 'input_parce_shiki' }),
                 $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_show_shiki_synonyms' }),
-                $( '<label>', { html: 'Отображать синонимы с Shikimori', style: 'margin-left: 2px;',  for: 'input_show_shiki_synonyms' }),
+                $( '<label>', { html: 'Отображать синонимы с Shikimori', style: 'margin-left: 2px;', for: 'input_show_shiki_synonyms' }),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_anydb_synonyms' }),
-                $( '<label>', { html: 'Отображать синонимы с AniDB', style: 'margin-left: 2px;',  for: 'input_show_anydb_synonyms' }),
+                $( '<label>', { html: 'Отображать синонимы с AniDB', style: 'margin-left: 2px;', for: 'input_show_anydb_synonyms' }),
                 $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files' }),
                 $( '<label>', { html: 'Анализировать файлы в раздаче (требует дополнительный запрос к трекеру)', style: 'margin-left: 2px;',  for: 'input_parce_files' }),
                 $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files_on_completed' }),
-                $( '<label>', { html: 'Анализировать файлы в проверенных раздачах', style: 'margin-left: 2px;',  for: 'input_parce_files_on_completed' }),
+                $( '<label>', { html: 'Анализировать файлы в проверенных раздачах', style: 'margin-left: 2px;', for: 'input_parce_files_on_completed' }),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_same_size_files' }),
+                $( '<label>', { html: 'Сравнивать размер файлов', style: 'margin-left: 2px;', for: 'input_show_same_size_files' }),
             ])
         ])
     ]);
@@ -787,6 +862,8 @@ function update_ui_state() {
     $("#input_show_shiki_synonyms").prop( "checked", settings.show_shiki_synonyms );
     $("#input_show_anydb_synonyms").prop( "checked", settings.show_anydb_synonyms );
     $("#input_parce_files").prop( "checked", settings.parce_files );
+    $("#input_show_same_size_files").prop( "checked", settings.show_same_size_files );
+    $("#input_show_same_size_files").prop( "disabled", !settings.parce_files );
     $("#input_parce_files_on_completed").prop( "checked", settings.parce_files_on_completed );
     $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
 }
@@ -795,26 +872,39 @@ function update_settings(){
     settings.show_shiki_synonyms = $('#input_show_shiki_synonyms').is(":checked");
     settings.show_anydb_synonyms = $('#input_show_anydb_synonyms').is(":checked");
     settings.parce_files = $('#input_parce_files').is(":checked");
+    settings.show_same_size_files = $('#input_show_same_size_files').is(":checked");
+    $("#input_show_same_size_files").prop( "disabled", !settings.parce_files );
     settings.parce_files_on_completed = $('#input_parce_files_on_completed').is(":checked");
-    //$("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
+    $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
     settings.save();
+    update_ui_errors();
 }
-function update_errors(){
-    if (errors.length > 0){
-        $('#errors_data').show();
-        $('#errors_data').css("color", "red");
-        $('#errors_data').css("font-weight", "bold");
-        $('#errors_data').html(errors.join("<\/br>"));
+function update_ui_errors(){
+    var is_completed = check_torrent_status();
+    if (settings.parce_files && (settings.parce_files_on_completed || !is_completed)){
+        if (errors.length > 0){
+            $('#errors_data').show();
+            $('#errors_data').css("color", "red");
+            $('#errors_data').css("font-weight", "bold");
+            $('#errors_data').html(errors.join("<\/br>"));
+        }else{
+            $('#errors_data').hide();
+        }
+
+        if ((warnings.length > 0) || (size_warnings.length > 0 && settings.show_same_size_files)){
+            $('#warnings_data').show();
+            $('#warnings_data').css("color", "darkorange");
+            $('#warnings_data').css("font-weight", "bold");
+            if (settings.show_same_size_files){
+                $('#warnings_data').html([...warnings, ...size_warnings].join("<\/br>"));
+            }else{
+                $('#warnings_data').html(warnings.join("<\/br>"));
+            }
+        }else{
+            $('#warnings_data').hide();
+        }
     }else{
         $('#errors_data').hide();
-    }
-
-    if (warnings.length > 0){
-        $('#warnings_data').show();
-        $('#warnings_data').css("color", "darkorange");
-        $('#warnings_data').css("font-weight", "bold");
-        $('#warnings_data').html(warnings.join("<\/br>"));
-    }else{
         $('#warnings_data').hide();
     }
 }
@@ -837,16 +927,23 @@ function get_ajax(url, type, content_type, args, event_handler) {
 function htmlListToObj(element) {
     var o = {};
     o.name = element.firstElementChild.innerHTML.replace("<b>", "").replace("<\/b><s><\/s>","").replace(/<i>\d*?<\/i>/,"");
-    o.size = element.firstElementChild.innerHTML.replace(/.*?<\/b><s><\/s><i>/, "").replace(/<\/i>/,"");
     o.type = element.className;
-    o.nodes = [];
-    [].slice.call(element.children).filter(function(e) {
-        return e.tagName.toLowerCase() === 'ul';
-    }).forEach(function(ul) {
-        [].slice.call(ul.children).forEach(function(li) {
-           o.nodes.push(htmlListToObj(li));
+
+    if (o.type != "dir"){
+        o.size = element.firstElementChild.innerHTML.replace(/.*?<\/b><s><\/s><i>/, "").replace(/<\/i>/,"");
+        o.type = o.name.match(/\w+$/)[0];
+    }else{
+        o.size = null;
+        o.nodes = [];
+        [].slice.call(element.children).filter(function(e) {
+            return e.tagName.toLowerCase() === 'ul';
+        }).forEach(function(ul) {
+            [].slice.call(ul.children).forEach(function(li) {
+                o.nodes.push(htmlListToObj(li));
+            });
         });
-    });
+    }
+
     return o;
 }
 
