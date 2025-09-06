@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.4.2
+// @version      0.4.3
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -588,38 +588,40 @@ function process_mi(){
 // files processing
 
 class Folder{
-    constructor(folder, type) {
+    constructor(folder, parentObj) {
         this.name = folder.name
             .replace("&amp;", "&");
 
         this.files = folder.nodes.filter(x => x.type != "dir");
-        this.files = this.files.filter(x => x.name.includes(".mkv") ||
-                                            x.name.includes(".mp4") ||
-                                            x.name.includes(".avi") ||
-                                            x.name.includes(".mka") ||
-                                            x.name.includes(".ass") ||
-                                            x.name.includes(".srt"));
+        this.files = this.files.filter(x => x.type.includes("mkv") ||
+                                            x.type.includes("mp4") ||
+                                            x.type.includes("avi") ||
+                                            x.type.includes("mka") ||
+                                            x.type.includes("ass") ||
+                                            x.type.includes("srt"));
 
-        if(type == "root"){
-            for (let file of this.files) {
-                file.name = file.name.replace(".mkv", "").replace(".mp4", "").replace(".avi", "")
-            }
-        }
+        this.parent = parentObj;
 
-        if (this.name.includes("Extra") ||
-            this.name.includes("NC") ||
-            this.name.includes("PV") ||
-            this.name.includes("CM") ||
-            this.name.includes("Special") ||
-            this.name.includes("Bonus") ||
+        this.fullPath = this.parent ? (this.parent.fullPath + "/" + this.name) : this.name;
+
+        if (this.fullPath.includes("Extra") ||
+            this.fullPath.includes("NC") ||
+            this.fullPath.includes("PV") ||
+            this.fullPath.includes("CM") ||
+            //this.fullPath.includes("Special") ||
+            this.fullPath.includes("Bonus") ||
             this.files.length == 0){
             this.ignore = true;
         }
 
-        this.calcOffset();
+        this.calcOffset(parentObj);
+
+        for (let file of this.files) {
+            file.epNumber = this.cut(file.name);
+        }
     }
 
-    calcOffset(){
+    calcOffset(parentObj){
         this.cutFromStart = 0;
         this.cutFromEnd = 0;
 
@@ -628,7 +630,7 @@ class Folder{
             for (let i = 0; i < this.files[0].name.length; i++){
                 if (this.files[0].name.charAt(i) == this.files[this.files.length-1].name.charAt(i)){
                     if (is_same){
-                        this.cutFromStart = i;
+                        this.cutFromStart = i+1;
                     }
                 }else{
                     is_same = false;
@@ -645,11 +647,18 @@ class Folder{
                     is_same = false;
                 }
             }
+        }else if(this.files.length == 1){
+            this.cutFromStart = parentObj.cutFromStart;
+            this.cutFromEnd = parentObj.cutFromEnd;
         }
     }
 
     cut(filename){
-        return filename.slice(this.cutFromStart, -1*this.cutFromEnd);
+        return filename.slice(this.cutFromStart, filename.length-this.cutFromEnd);
+    }
+
+    getHtmlPath(){
+        return "<span title=\"" + this.fullPath + "\">" + this.name + "</span>";
     }
 }
 function init_files_processing(){
@@ -672,7 +681,7 @@ function check_torrent_status(){
 }
 function files_processing(){
     if (this.status >= 400) {
-        console.log('Returned ' + this.status + ': ' + this.responseText);
+        console.error('Returned ' + this.status + ': ' + this.responseText);
         return;
     }
 
@@ -690,26 +699,22 @@ function files_processing(){
         return;
     }
 
-    var root = new Folder(treeObj, "root");
     var folders = [];
-    var files = [];
+
     recurcive_folder(treeObj);
-    function recurcive_folder(parent){
-        for (var node of parent.nodes) {
+    function recurcive_folder(folder, parentObj){
+        var folderObj = new Folder(folder, parentObj);
+
+        folders.push(folderObj);
+
+        for (var node of folder.nodes) {
             if (node.type == "dir"){
-                folders.push(new Folder(node));
-                recurcive_folder(node);
-            }else{
-                files.push(node);
+                recurcive_folder(node, folderObj);
             }
         }
     }
+    console.log(folders);
 
-    for (let file of root.files) {
-        if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
-            errors.push("Запрещенные символы: " + file);
-        }
-    }
     for (let folder of folders) {
         for (let file of folder.files) {
             if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
@@ -720,10 +725,11 @@ function files_processing(){
 
     folders = folders.filter(x => !x.ignore);
 
-    console.log(root);
-    console.log(folders);
+    var root = folders[0];
+    var specials = folders.filter(x => x.fullPath.includes("Special"))[0];
+    var video_files = [...root.files, ...(specials?.files ?? [])];
 
-    for (let episode of root.files) {
+    for (let episode of video_files) {
         let noTranslation = true;
         for (let folder of folders) {
             for (let trnsl of folder.files) {
@@ -733,20 +739,22 @@ function files_processing(){
             }
         }
         if (noTranslation){
-            errors.push("Нет перевода на эпизод " + root.cut(episode.name));
+            errors.push("Нет перевода на эпизод " + episode.epNumber);
         }
     }
 
-    for (let folder of folders) {
+    for (let folder of folders.filter(x => !x.fullPath.includes("Special"))) {
         for (let trnsl of folder.files) {
-            let has_video = false;
-            for (let episode of root.files) {
-                if (trnsl.name.startsWith(episode.name)){
-                    has_video = true;
+            if (trnsl.type != "mkv" && trnsl.type != "mp4" && trnsl.type != "avi"){
+                let has_video = false;
+                for (let episode of video_files) {
+                    if (trnsl.name.startsWith(episode.name)){
+                        has_video = true;
+                    }
                 }
-            }
-            if (!has_video){
-                errors.push("В папке " + folder.name + " у перевода нет видео: " + trnsl.name);
+                if (!has_video){
+                    errors.push("В папке " + folder.getHtmlPath() + " у перевода нет видео: " + trnsl.name);
+                }
             }
         }
 
@@ -758,17 +766,18 @@ function files_processing(){
                 }
             }
             if (!has_trnsl){
-                warnings.push("В папке " + folder.name + " нет перевода на эпизод " + root.cut(episode.name));
-                console.log(folder);
+                warnings.push("В папке " + folder.getHtmlPath() + " нет перевода на эпизод " + episode.epNumber);
             }
         }
+    }
 
+    for (let folder of folders) {
         for (let i = 0; i < folder.files.length; i++) {
             for (let j = 0; j < i; j++) {
                 if (folder.files[i].size == folder.files[j].size){
-                    size_warnings.push("В папке " + folder.name + " у эпизодов " +
-                                       folder.cut(folder.files[j].name) + " и " +
-                                       folder.cut(folder.files[i].name) + " одинаковый размер файлов.");
+                    size_warnings.push("В папке " + folder.getHtmlPath() + " у эпизодов " +
+                                       folder.files[j].epNumber + " и " +
+                                       folder.files[i].epNumber + " одинаковый размер файлов.");
                 }
             }
         }
@@ -798,7 +807,7 @@ function create_ui(){
         $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные [не] загружаются..."}),
         $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
         $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
-        $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px;  border-top: 1px solid #80808080;"}),
+        $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;"}),
         $('<div>', {style: "position: absolute; right: 6px; bottom: 3px; width: 15px; height: 15px; cursor: pointer;",
                     html: "<?xml version=\"1.0\" standalone=\"no\"?><!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 20010904//EN\" \"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\">"+
                     "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280.000000 1280.000000\" preserveAspectRatio=\"xMidYMid meet\">"+
@@ -924,6 +933,7 @@ function htmlListToObj(element) {
     if (o.type != "dir"){
         o.size = element.firstElementChild.innerHTML.replace(/.*?<\/b><s><\/s><i>/, "").replace(/<\/i>/,"");
         o.type = o.name.match(/\w+$/)[0];
+        o.name = o.name.replace("."+o.type, "");
     }else{
         o.size = null;
         o.nodes = [];
