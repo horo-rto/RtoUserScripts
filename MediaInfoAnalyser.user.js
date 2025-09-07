@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.1
+// @version      0.5.2
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -23,7 +23,6 @@ var size_warnings = [];
 
 // todo:
 // clean cashe
-// image size
 
 class Settings{
     constructor(){
@@ -617,7 +616,10 @@ class Anime {
             this.altr = [...this.altr, ...(this.altr_anidb ? Array.from(this.altr_anidb, x => x["#text"]) : [])];
         }
 
-        this.altr = this.altr.filter(n => n).filter(n => n != this.licenseNameRu).filter(n => n != this.name);
+        this.altr = this.altr
+            .filter(n => n)
+            .filter(n => n != (this.licenseNameRu ?? this.russian))
+            .filter(n => n != this.name);
         this.altr = [...new Set(this.altr)].sort();
     }
 }
@@ -794,6 +796,8 @@ function files_processing(){
         return;
     }
 
+    // create data structure
+
     var parser = new DOMParser();
     var doc = parser.parseFromString(this.responseText, "text/html");
     var treeObj = htmlListToObj(doc.getElementsByClassName("ftree")[0].firstElementChild);
@@ -819,6 +823,8 @@ function files_processing(){
     }
     console.log(folders);
 
+    // analyse
+
     for (let folder of folders) {
         for (let file of folder.files) {
             if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
@@ -833,17 +839,19 @@ function files_processing(){
     var specials = folders.filter(x => x.fullPath.includes("Special"))[0];
     var video_files = [...root.files, ...(specials?.files ?? [])];
 
-    for (let episode of video_files) {
-        let noTranslation = true;
-        for (let folder of folders) {
-            for (let trnsl of folder.files) {
-                if (trnsl.name.startsWith(episode.name)){
-                    noTranslation = false;
+    if (folders.length > 1){
+        for (let episode of video_files) {
+            let noTranslation = true;
+            for (let folder of folders.filter(x => x.parent)) {
+                for (let trnsl of folder.files) {
+                    if (trnsl.name.startsWith(episode.name)){
+                        noTranslation = false;
+                    }
                 }
             }
-        }
-        if (noTranslation){
-            errors.push("Нет перевода на эпизод " + episode.epNumber);
+            if (noTranslation){
+                errors.push("Нет перевода на эпизод " + episode.epNumber);
+            }
         }
     }
 
@@ -987,7 +995,7 @@ function create_ui(){
         $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные загружаются..."}),
         $('<div>', {id: 'image_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; color: red; font-weight: bold; display: none;", html: ""}),
         $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
-        $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
+        $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; max-height: 400px; overflow-y: auto;", html: "Данные загружаются..."}),
         $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;"}),
         $('<div>', {style: "position: absolute; right: 6px; bottom: 3px; width: 15px; height: 15px; cursor: pointer;",
                     html: "<?xml version=\"1.0\" standalone=\"no\"?><!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 20010904//EN\" \"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\">"+
