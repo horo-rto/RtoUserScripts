@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.4.3
+// @version      0.5.0
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -12,8 +12,7 @@
 // @grant        GM_setValue
 // ==/UserScript==
 
-var post;
-
+var anime;
 var media_info;
 
 var settings;
@@ -24,6 +23,7 @@ var size_warnings = [];
 
 // todo:
 // clean cashe
+// image size
 
 class Settings{
     constructor(){
@@ -73,7 +73,7 @@ class MediaInfo{
         this.isJapanese = false;
     }
 
-    parse(){
+    parse(post){
         var spoilers = post.innerHTML.match(/<div class="sp-wrap">.*?<div class="sp-body">.*?<\/div>\n<\/div>/gms);
         for (const spoiler of spoilers){
             if (spoiler.includes("Frame rate") || spoiler.includes("Частота кадров")){
@@ -549,32 +549,121 @@ class Text {
     }
 }
 
+class Anime {
+    constructor(data, anidb_titles) {
+        this.#src = data;
+
+        this.year = data.airedOn.year;
+        this.type = data.kind;
+        this.episodes = data.episodes;
+        this.duration = data.duration;
+        this.genres = Array.from(data.genres, (x) => x.russian.toLowerCase());
+        this.rating = data.rating;
+
+        this.licenseNameRu = data.licenseNameRu;
+        this.russian = data.russian;
+
+        this.directors = Array.from(data.personRoles.filter(x => x.rolesEn.includes("Director")), x => x.person.russian);
+        this.studios = Array.from(data.studios, x => x.name);
+
+        this.links = [];
+        for (let i = 0; i < data.externalLinks.length; i++) {
+            this.links[data.externalLinks[i].kind] = data.externalLinks[i].url;
+        }
+        var anime_db_id = this.links.anime_db.match(/\d+/gm)[0];
+
+        if (anidb_titles != null && anidb_titles[anime_db_id] != null ){
+            this.altr_anidb = anidb_titles[anime_db_id];
+            this.name = this.altr_anidb.filter(x => x.type == "main")[0]["#text"];
+        }
+
+        this.configue_altr();
+    }
+
+    #src = {};
+
+    toString() {
+        this.configue_altr();
+
+        var out = [];
+
+        if (this.licenseNameRu){
+            out.push("<b>" + this.licenseNameRu + "</b>");
+        }else{
+            out.push(this.russian);
+        }
+        out.push("<b>" + this.name + "</b>");
+        out.push("");
+        if (this.altr.length > 0){
+            out.push(this.altr.join("<\/br>"));
+            out.push("");
+        }
+        out.push(this.year);
+        out.push(this.type + ", " + this.episodes + " по " + this.duration + " мин");
+        out.push(this.genres.join(", "));
+        out.push(this.directors.join(", "));
+        out.push(this.studios.join(", "));
+
+        return out.join("</br>");
+    }
+
+    configue_altr(){
+        this.altr = [];
+
+        if (settings.show_shiki_synonyms){
+            this.altr = [(this.#src.licenseNameRu ? this.#src.russian : null), this.#src.name, this.#src.english, this.#src.japanese, ...this.#src.synonyms];
+        }
+        if (settings.show_anydb_synonyms) {
+            this.altr = [...this.altr, ...(this.altr_anidb ? Array.from(this.altr_anidb, x => x["#text"]) : [])];
+        }
+
+        this.altr = this.altr.filter(n => n).filter(n => n != this.licenseNameRu).filter(n => n != this.name);
+        this.altr = [...new Set(this.altr)].sort();
+    }
+}
+
 (function() {
-    console.log("RTO mediainfo analyser");
-    if(window.location.href.match(/start=\d+/) != null) return;
+    console.log("RTO Release Assistant");
+    if (window.location.href.match(/start=\d+/) != null) return;
+    if (check_torrent_status() == null) return;
 
-    settings = new Settings();
+    settings = new Settings();;
 
-    post = $('#topic_main > tbody > tr > .td2 > .post_wrap > .post_body')[0];
+    var post = $('#topic_main > tbody > tr > .td2 > .post_wrap > .post_body')[0];
 
     create_ui();
 
-    $("#input_parce_shiki").prop( "disabled", true );
-    $("#input_show_shiki_synonyms").prop( "disabled", true );
-    $("#input_show_anydb_synonyms").prop( "disabled", true );
+    image_processing(post);
+    process_mi(post);
 
-    $("#input_parce_shiki").prop( "checked", false );
-    $("#input_show_shiki_synonyms").prop( "checked", false );
-    $("#input_show_anydb_synonyms").prop( "checked", false );
-
-    process_mi();
     init_files_processing();
+
+    load_shiki(find_shiki_id(post));
 })();
 
-function process_mi(){
+// topic html parsing
+
+function check_torrent_status(){
+    var status = $('#tor-status-resp > .tor-icon')[0];
+    if (status == null) return null;
+    return status.innerHTML == "√" || status.innerHTML == "#" || status.innerHTML == "T";
+}
+function find_shiki_id(post){
+    var link = post.innerHTML.match(/myanimelist.net.anime.\d+/gm);
+    if (link != null){
+        return link[0].match(/\d+/gm)[0];
+    }else{
+        link = post.innerHTML.match(/shikimori.one.animes.\d+/gm);
+        if (link != null){
+            return link[0].match(/\d+/gm)[0];
+        }
+    }
+    return null;
+}
+function process_mi(post){
     try{
         media_info = new MediaInfo();
-        media_info.parse();
+        media_info.parse(post);
 
         if (media_info.video != null){
             console.log( media_info.dump() );
@@ -582,6 +671,21 @@ function process_mi(){
         }
     } catch (e) {
         console.error("Media info parcing error:", e);
+    }
+}
+function image_processing(post){
+    var images = post.innerHTML.match(/<img .*?>/gm).filter(x => x.includes("postImg"));
+    var regex = /class=\".*?\" /g;
+    images = Array.from(images, (x) => x.replace("<img ","").replace(regex,"").replace("alt=\"pic\" ","").replace("src=\"","").replace("\">",""));
+    for(var i = 0; i < images.length; i++){
+        var theImage = new Image();
+        theImage.src = images[i];
+        var longer = theImage.height > theImage.width ? theImage.height : theImage.width;
+        var shorter = theImage.height <= theImage.width ? theImage.height : theImage.width;
+        if (longer > 700 || shorter > 500){
+            $('#image_data').html("Некорректный размер изображения");
+            $('#image_data').show();
+        }
     }
 }
 
@@ -674,10 +778,6 @@ function init_files_processing(){
     } catch (e) {
         console.error("Files processing error:", e);
     }
-}
-function check_torrent_status(){
-    var status = $('#tor-status-resp > .tor-icon')[0];
-    return status.innerHTML == "√" || status.innerHTML == "#" || status.innerHTML == "T";
 }
 function files_processing(){
     if (this.status >= 400) {
@@ -786,6 +886,82 @@ function files_processing(){
     update_ui_errors();
 }
 
+// shiki
+
+function load_shiki(id){
+    if (settings.parce_shiki){
+        if (id == null){
+            $('#shiki_data').html("Идентификатор не найден.");
+            return;
+        }
+
+        // https://shikimori.one/api/doc/graphql
+        var graphqlQuery = "{ \"query\": \"{ animes(ids: \\\"" + id + "\\\", limit: 1, censored: false) { " +
+            "id malId airedOn { year } rating score kind episodes episodesAired duration status " +
+            "licenseNameRu name russian japanese english synonyms " +
+            "genres { russian kind } " +
+            "studios { name } " +
+            "personRoles {roles: rolesRu rolesEn person { name russian } } " +
+            "externalLinks { kind url } " +
+            "licensors fansubbers fandubbers " +
+            "} }\"}";
+
+        get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, shiki_handler);
+    }else{
+        update_ui_shiki();
+    }
+}
+function shiki_handler() {
+    if (this.status >= 400) {
+        console.log('Returned ' + this.status + ': ' + this.responseText);
+        return
+    }
+
+    var data = JSON.parse(this.responseText).data.animes[0];
+    try{
+        var anidb_titles = JSON.parse(GM_getValue("anidb_titles")) ?? null;
+    }catch{
+        anidb_titles = [];
+    }
+
+    anime = new Anime(data, anidb_titles);
+    console.log(anime);
+    update_ui_shiki();
+}
+
+// anidb
+
+function import_titles(event) {
+
+    console.log("file selected");
+    const file = event.target.files[0];
+    console.log(file);
+
+    var reader = new FileReader();
+    reader.readAsText(file, "UTF-8");
+    reader.onload = function (evt) {
+        var tmp_ob = parseXml(evt.target.result);
+
+        var anidb_titles = [];
+        for (let i = 0; i < tmp_ob.animetitles.anime.length; i++) {
+            if (tmp_ob.animetitles.anime[i].title != null){
+                if (Array.isArray(tmp_ob.animetitles.anime[i].title)){
+                    anidb_titles[tmp_ob.animetitles.anime[i].aid] =
+                        tmp_ob.animetitles.anime[i].title.filter(x => x["xml:lang"] == "x-jat" || x["xml:lang"] == "ja" || x["xml:lang"] == "ru" || x["xml:lang"] == "en"
+                                                                 || x["xml:lang"] == "zh-Hans" || x["xml:lang"] == "zh-Hant" || x["xml:lang"] == "x-zht");
+                }
+            }
+        }
+
+        GM_setValue("anidb_titles", JSON.stringify(anidb_titles));
+        console.log("save completed");
+        location.reload();
+    }
+    reader.onerror = function (evt) {
+        console.log("error reading file");
+    }
+}
+
 /// common ui code
 
 function create_ui(){
@@ -804,7 +980,8 @@ function create_ui(){
             $('<div>', {id: 'assist_box_arrow_right', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯈"}),
             $('<div>', {id: 'assist_box_arrow_left', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯇"})
         ]),
-        $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные [не] загружаются..."}),
+        $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные загружаются..."}),
+        $('<div>', {id: 'image_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; color: red; font-weight: bold; display: none;", html: ""}),
         $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
         $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
         $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;"}),
@@ -849,6 +1026,23 @@ function toggle() {
     settings.save();
     update_ui_state();
 }
+function update_settings(){
+    settings.parce_shiki = $('#input_parce_shiki').is(":checked");
+    settings.show_shiki_synonyms = $('#input_show_shiki_synonyms').is(":checked");
+    $("#input_show_shiki_synonyms").prop( "disabled", !settings.parce_shiki );
+    settings.show_anydb_synonyms = $('#input_show_anydb_synonyms').is(":checked");
+    $("#input_show_anydb_synonyms").prop( "disabled", !settings.parce_shiki );
+
+    settings.parce_files = $('#input_parce_files').is(":checked");
+    settings.show_same_size_files = $('#input_show_same_size_files').is(":checked");
+    $("#input_show_same_size_files").prop( "disabled", !settings.parce_files );
+    settings.parce_files_on_completed = $('#input_parce_files_on_completed').is(":checked");
+    $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
+
+    settings.save();
+    update_ui_errors();
+    update_ui_shiki();
+}
 function update_ui_state() {
     if(settings.display){
         $('#assist_box')[0].style.transform = "translate(0, 0)";
@@ -861,24 +1055,15 @@ function update_ui_state() {
 
     $("#input_parce_shiki").prop( "checked", settings.parce_shiki );
     $("#input_show_shiki_synonyms").prop( "checked", settings.show_shiki_synonyms );
+    $("#input_show_shiki_synonyms").prop( "disabled", !settings.parce_shiki );
     $("#input_show_anydb_synonyms").prop( "checked", settings.show_anydb_synonyms );
+    $("#input_show_anydb_synonyms").prop( "disabled", !settings.parce_shiki );
+
     $("#input_parce_files").prop( "checked", settings.parce_files );
     $("#input_show_same_size_files").prop( "checked", settings.show_same_size_files );
     $("#input_show_same_size_files").prop( "disabled", !settings.parce_files );
     $("#input_parce_files_on_completed").prop( "checked", settings.parce_files_on_completed );
     $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
-}
-function update_settings(){
-    settings.parce_shiki = $('#input_parce_shiki').is(":checked");
-    settings.show_shiki_synonyms = $('#input_show_shiki_synonyms').is(":checked");
-    settings.show_anydb_synonyms = $('#input_show_anydb_synonyms').is(":checked");
-    settings.parce_files = $('#input_parce_files').is(":checked");
-    settings.show_same_size_files = $('#input_show_same_size_files').is(":checked");
-    $("#input_show_same_size_files").prop( "disabled", !settings.parce_files );
-    settings.parce_files_on_completed = $('#input_parce_files_on_completed').is(":checked");
-    $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
-    settings.save();
-    update_ui_errors();
 }
 function update_ui_errors(){
     var is_completed = check_torrent_status();
@@ -907,6 +1092,23 @@ function update_ui_errors(){
     }else{
         $('#errors_data').hide();
         $('#warnings_data').hide();
+    }
+}
+function update_ui_shiki(){
+    if (settings.parce_shiki){
+        var text = anime.toString();
+
+        if (anime.name == null){
+            text += "<\/br><\/br><span style=\"color:red;font-weight:bold;\">Кеш названий устарел. Обновите .xml файл:</span><\/br>"+
+                "<a href=\"http://anidb.net/api/anime-titles.xml.gz\" target=\"_blank\">http://anidb.net/api/anime-titles.xml.gz</a><\/br>" +
+                "<form id=\"import_titles_form\" onsubmit=\"event.preventDefault();\"><input type=\"file\" id=\"import_title\" accept=\".xml\" ></form>";
+        }
+
+        $('#shiki_data').html(text);
+        $('#import_title').on('change', import_titles);
+        $('#shiki_data').show();
+    }else{
+        $('#shiki_data').hide();
     }
 }
 
@@ -947,5 +1149,45 @@ function htmlListToObj(element) {
     }
 
     return o;
+}
+
+// https://stackoverflow.com/a/19448718
+function parseXml(xml, arrayTags) {
+    let dom = null;
+    if (window.DOMParser) dom = (new DOMParser()).parseFromString(xml, "text/xml");
+    else if (window.ActiveXObject) {
+        dom = new ActiveXObject('Microsoft.XMLDOM');
+        dom.async = false;
+        if (!dom.loadXML(xml)) throw dom.parseError.reason + " " + dom.parseError.srcText;
+    }
+    else throw new Error("cannot parse xml string!");
+
+    function parseNode(xmlNode, result) {
+        if (xmlNode.nodeName == "#text") {
+            let v = xmlNode.nodeValue;
+            if (v.trim()) result['#text'] = v;
+            return;
+        }
+
+        let jsonNode = {},
+            existing = result[xmlNode.nodeName];
+        if (existing) {
+            if (!Array.isArray(existing)) result[xmlNode.nodeName] = [existing, jsonNode];
+            else result[xmlNode.nodeName].push(jsonNode);
+        }
+        else {
+            if (arrayTags && arrayTags.indexOf(xmlNode.nodeName) != -1) result[xmlNode.nodeName] = [jsonNode];
+            else result[xmlNode.nodeName] = jsonNode;
+        }
+
+        if (xmlNode.attributes) for (let attribute of xmlNode.attributes) jsonNode[attribute.nodeName] = attribute.nodeValue;
+
+        for (let node of xmlNode.childNodes) parseNode(node, jsonNode);
+    }
+
+    let result = {};
+    for (let node of dom.childNodes) parseNode(node, result);
+
+    return result;
 }
 
