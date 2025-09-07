@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.2
+// @version      0.5.3
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -660,6 +660,7 @@ function find_shiki_id(post){
             return link[0].match(/\d+/gm)[0];
         }
     }
+
     return null;
 }
 function process_mi(post){
@@ -828,7 +829,7 @@ function files_processing(){
     for (let folder of folders) {
         for (let file of folder.files) {
             if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
-                errors.push("Запрещенные символы: " + file);
+                errors.push("Запрещенные символы: " + file.name);
             }
         }
     }
@@ -900,28 +901,66 @@ function files_processing(){
 
 // shiki
 
-function load_shiki(id){
-    if (settings.parce_shiki){
-        if (id == null){
-            $('#shiki_data').html("Идентификатор не найден.");
-            return;
+function search_handler() {
+    if (this.status >= 400) {
+        console.log('Returned ' + this.status + ': ' + this.responseText);
+        return
+    }
+
+    try{
+        var animes = JSON.parse(this.responseText).data.animes;
+        let tags = document.title.match(/\[.*?\]/g);
+
+        let lastTag = tags[tags.length-1];
+        if (lastTag == "[720p]" || lastTag == "[960p]" || lastTag == "[1080p]" || lastTag == "[2160p]"){
+            var year = tags[tags.length-2].slice(1, -1).split(",")[0];
+        }else{
+            year = tags[tags.length-1].slice(1, -1).split(",")[0];
         }
 
-        // https://shikimori.one/api/doc/graphql
-        var graphqlQuery = "{ \"query\": \"{ animes(ids: \\\"" + id + "\\\", limit: 1, censored: false) { " +
-            "id malId airedOn { year } rating score kind episodes episodesAired duration status " +
-            "licenseNameRu name russian japanese english synonyms " +
-            "genres { russian kind } " +
-            "studios { name } " +
-            "personRoles {roles: rolesRu rolesEn person { name russian } } " +
-            "externalLinks { kind url } " +
-            "licensors fansubbers fandubbers " +
-            "} }\"}";
+        let type = tags[0].slice(1, -1).toLowerCase();
 
-        get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, shiki_handler);
+        for(let an of animes){
+            if (an.kind == type && an.airedOn.year == year){
+                load_shiki(an.id)
+                return;
+            }
+        }
+    } catch (e) {
+        console.error("Search processing error:", e);
+    }
+}
+function load_shiki(id){
+    // https://shikimori.one/api/doc/graphql
+
+    if (settings.parce_shiki){
+        if (id){
+            send_ajax_shiki(id);
+        }else{
+            $('#shiki_data').html("Идентификатор не найден, пробуем поиск...");
+            var names = document.title.match(/.*?\[/)[0].slice(0, -1).split("/");
+            var romadji = names[1].trim();
+            var graphqlQuery = "{ \"query\": \"  { animes(search: \\\"" + romadji + "\\\", limit: 10, censored: false) { id  malId name airedOn { year } kind } } \"}";
+            get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, search_handler);
+        }
     }else{
         update_ui_shiki();
     }
+}
+function send_ajax_shiki(id){
+    // https://shikimori.one/api/doc/graphql
+
+    var graphqlQuery = "{ \"query\": \"{ animes(ids: \\\"" + id + "\\\", limit: 1, censored: false) { " +
+        "id malId airedOn { year } rating score kind episodes episodesAired duration status " +
+        "licenseNameRu name russian japanese english synonyms " +
+        "genres { russian kind } " +
+        "studios { name } " +
+        "personRoles {roles: rolesRu rolesEn person { name russian } } " +
+        "externalLinks { kind url } " +
+        "licensors fansubbers fandubbers " +
+        "} }\"}";
+
+    get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, shiki_handler);
 }
 function shiki_handler() {
     if (this.status >= 400) {
@@ -994,7 +1033,7 @@ function create_ui(){
         ]),
         $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные загружаются..."}),
         $('<div>', {id: 'image_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; color: red; font-weight: bold; display: none;", html: ""}),
-        $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
+        $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; max-height: 400px; overflow-y: auto;", html: "Данные загружаются..."}),
         $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; max-height: 400px; overflow-y: auto;", html: "Данные загружаются..."}),
         $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;"}),
         $('<div>', {style: "position: absolute; right: 6px; bottom: 3px; width: 15px; height: 15px; cursor: pointer;",
