@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.0
+// @version      0.5.1
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -674,18 +674,22 @@ function process_mi(post){
     }
 }
 function image_processing(post){
-    var images = post.innerHTML.match(/<img .*?>/gm).filter(x => x.includes("postImg"));
-    var regex = /class=\".*?\" /g;
-    images = Array.from(images, (x) => x.replace("<img ","").replace(regex,"").replace("alt=\"pic\" ","").replace("src=\"","").replace("\">",""));
-    for(var i = 0; i < images.length; i++){
-        var theImage = new Image();
-        theImage.src = images[i];
-        var longer = theImage.height > theImage.width ? theImage.height : theImage.width;
-        var shorter = theImage.height <= theImage.width ? theImage.height : theImage.width;
-        if (longer > 700 || shorter > 500){
-            $('#image_data').html("Некорректный размер изображения");
-            $('#image_data').show();
+    try{
+        var images = post.innerHTML.match(/<img .*?>/gm).filter(x => x.includes("postImg"));
+        var regex = /class=\".*?\" /g;
+        images = Array.from(images, (x) => x.replace("<img ","").replace(regex,"").replace("alt=\"pic\" ","").replace("src=\"","").replace("\">",""));
+        for(var i = 0; i < images.length; i++){
+            var theImage = new Image();
+            theImage.src = images[i];
+            var longer = theImage.height > theImage.width ? theImage.height : theImage.width;
+            var shorter = theImage.height <= theImage.width ? theImage.height : theImage.width;
+            if (longer > 700 || shorter > 500){
+                $('#image_data').html("Некорректный размер изображения");
+                $('#image_data').show();
+            }
         }
+    }catch(e){
+        console.error("Image processing error:", e);
     }
 }
 
