@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.4
+// @version      0.5.5
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -23,6 +23,12 @@ var size_warnings = [];
 
 // todo:
 // clean cashe
+// icons for links
+// files bugs:
+// https://rutracker.org/forum/viewtopic.php?t=6220551
+// no mi:
+// https://rutracker.org/forum/viewtopic.php?t=6679139
+// https://rutracker.org/forum/viewtopic.php?t=6428442
 
 class Settings{
     constructor(){
@@ -299,7 +305,10 @@ class Audio {
 
         var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
         for (const line of lines) {
-            if (line.includes("Audio #1") || line.includes("Аудио #1") || line.includes("Audio") || line.includes("Аудио")){
+            if (line.replaceAll(/<.*?>/g, "") == "Audio #1" ||
+                line.replaceAll(/<.*?>/g, "") == "Аудио #1" ||
+                line.replaceAll(/<.*?>/g, "") == "Audio" ||
+                line.replaceAll(/<.*?>/g, "") == "Аудио"){
                 this.isfirst = 1;
                 media_info.isRussian = true;
                 media_info.isJapanese = false;
@@ -469,7 +478,10 @@ class Text {
     constructor(chunk) {
         var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
         for (const line of lines) {
-            if (line.includes("Text #1") || line.includes("Текст #1") || line.includes("Text") || line.includes("Текст")){
+            if (line.replaceAll(/<.*?>/g, "") == "Text #1" ||
+                line.replaceAll(/<.*?>/g, "") == "Текст #1" ||
+                line.replaceAll(/<.*?>/g, "") == "Text" ||
+                line.replaceAll(/<.*?>/g, "") == "Текст"){
                 this.isfirst = 1;
                 media_info.isRussian = true;
                 media_info.isJapanese = false;
