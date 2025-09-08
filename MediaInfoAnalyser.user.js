@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.3
+// @version      0.5.4
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -27,7 +27,6 @@ var size_warnings = [];
 class Settings{
     constructor(){
         var cached_settings = GM_getValue("release_assistance_settings") ?? null;
-        console.log(cached_settings);
 
         try {
             var parsed = JSON.parse(cached_settings);
@@ -552,6 +551,7 @@ class Anime {
     constructor(data, anidb_titles) {
         this.#src = data;
 
+        this.id = data.id;
         this.year = data.airedOn.year;
         this.type = data.kind;
         this.episodes = data.episodes;
@@ -565,15 +565,16 @@ class Anime {
         this.directors = Array.from(data.personRoles.filter(x => x.rolesEn.includes("Director")), x => x.person.russian);
         this.studios = Array.from(data.studios, x => x.name);
 
-        this.links = [];
-        for (let i = 0; i < data.externalLinks.length; i++) {
-            this.links[data.externalLinks[i].kind] = data.externalLinks[i].url;
-        }
-        var anime_db_id = this.links.anime_db.match(/\d+/gm)[0];
+        this.links = data.externalLinks;
+        this.links.push({kind : "shikimori", url : "https://shikimori.one/animes/"+ this.id});
 
-        if (anidb_titles != null && anidb_titles[anime_db_id] != null ){
-            this.altr_anidb = anidb_titles[anime_db_id];
-            this.name = this.altr_anidb.filter(x => x.type == "main")[0]["#text"];
+        if (this.links.filter(x => x.kind=="anime_db").length > 0){
+            var anime_db_id = this.links.filter(x => x.kind=="anime_db")[0].url.match(/\d+/gm)[0];
+
+            if (anidb_titles != null && anidb_titles[anime_db_id] != null ){
+                this.altr_anidb = anidb_titles[anime_db_id];
+                this.name = this.altr_anidb.filter(x => x.type == "main")[0]["#text"];
+            }
         }
 
         this.configue_altr();
@@ -598,12 +599,41 @@ class Anime {
             out.push("");
         }
         out.push(this.year);
-        out.push(this.type + ", " + this.episodes + " по " + this.duration + " мин");
+        out.push(this.type + ", " + (this.episodes == 0 ? "?" : this.episodes) + " по " + this.duration + " мин");
         out.push(this.genres.join(", "));
         out.push(this.directors.join(", "));
         out.push(this.studios.join(", "));
 
+        out.push("");
+
+        out.push(this.getLinks());
+
         return out.join("</br>");
+    }
+
+    getLinks(){
+        return Array.from(this.links, link => "<a href =\""+ link.url +"\" target=\"_blank\" >" + this.getLogo(link.kind) + "</a>").join(" ");
+    }
+
+    getLogo(name){
+        switch(name){
+            case "shikimori":
+                return "Shiki";
+            case "official_site":
+                return "Site";
+            case "wikipedia":
+                return "Wiki";
+            case "anime_news_network":
+                return "ANN";
+            case "myanimelist":
+                return "MAL";
+            case "anime_db":
+                return "AniDB";
+            case "world_art":
+                return "WA";
+            case "twitter":
+                return "X";
+        }
     }
 
     configue_altr(){
@@ -769,7 +799,7 @@ class Folder{
     }
 
     getHtmlPath(){
-        return "<span title=\"" + this.fullPath + "\">" + this.name + "</span>";
+        return "<span style=\"color: #FF4F00;\" title=\"" + this.fullPath + "\">" + this.name + "</span>";
     }
 }
 function init_files_processing(){
@@ -901,9 +931,25 @@ function files_processing(){
 
 // shiki
 
+function load_shiki(id){
+    if (settings.parce_shiki){
+        if (id){
+            send_ajax_shiki(id);
+        }else{
+            $('#shiki_data').html("Идентификатор не найден, пробуем поиск...");
+            $('#shiki_untrusted').show();
+            var names = document.title.match(/.*?\[/)[0].slice(0, -1).split("/");
+            var romadji = names[1].trim();
+            var graphqlQuery = "{ \"query\": \"  { animes(search: \\\"" + romadji + "\\\", limit: 20, censored: false) { id  malId name airedOn { year } kind } } \"}";
+            get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, search_handler);
+        }
+    }else{
+        update_ui_shiki();
+    }
+}
 function search_handler() {
     if (this.status >= 400) {
-        console.log('Returned ' + this.status + ': ' + this.responseText);
+        console.error('Returned ' + this.status + ': ' + this.responseText);
         return
     }
 
@@ -919,6 +965,9 @@ function search_handler() {
         }
 
         let type = tags[0].slice(1, -1).toLowerCase();
+        if(type.includes("+")){
+            type = type.split("+")[0];
+        }
 
         for(let an of animes){
             if (an.kind == type && an.airedOn.year == year){
@@ -928,23 +977,6 @@ function search_handler() {
         }
     } catch (e) {
         console.error("Search processing error:", e);
-    }
-}
-function load_shiki(id){
-    // https://shikimori.one/api/doc/graphql
-
-    if (settings.parce_shiki){
-        if (id){
-            send_ajax_shiki(id);
-        }else{
-            $('#shiki_data').html("Идентификатор не найден, пробуем поиск...");
-            var names = document.title.match(/.*?\[/)[0].slice(0, -1).split("/");
-            var romadji = names[1].trim();
-            var graphqlQuery = "{ \"query\": \"  { animes(search: \\\"" + romadji + "\\\", limit: 10, censored: false) { id  malId name airedOn { year } kind } } \"}";
-            get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, search_handler);
-        }
-    }else{
-        update_ui_shiki();
     }
 }
 function send_ajax_shiki(id){
@@ -964,7 +996,7 @@ function send_ajax_shiki(id){
 }
 function shiki_handler() {
     if (this.status >= 400) {
-        console.log('Returned ' + this.status + ': ' + this.responseText);
+        console.error('Returned ' + this.status + ': ' + this.responseText);
         return
     }
 
@@ -986,7 +1018,6 @@ function import_titles(event) {
 
     console.log("file selected");
     const file = event.target.files[0];
-    console.log(file);
 
     var reader = new FileReader();
     reader.readAsText(file, "UTF-8");
@@ -1009,7 +1040,7 @@ function import_titles(event) {
         location.reload();
     }
     reader.onerror = function (evt) {
-        console.log("error reading file");
+        console.error("error reading file");
     }
 }
 
@@ -1031,6 +1062,11 @@ function create_ui(){
             $('<div>', {id: 'assist_box_arrow_right', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯈"}),
             $('<div>', {id: 'assist_box_arrow_left', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯇"})
         ]),
+        $('<div>', {id: 'shiki_untrusted', style: "position: absolute; right: 11px; top: 7px; width: 20px; height: 20px;",
+                    title: "Данные получены через поиск и могут быть ошибочными!",
+                    html: "<?xml version=\"1.0\" encoding=\"utf-8\"?>"+
+                    "<svg fill=\"#404040\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\">"+
+                    "<g><path d=\"M19.79,16.72,11.06,1.61A1.19,1.19,0,0,0,9,1.61L.2,16.81C-.27,17.64.12,19,1.05,19H19C19.92,19,20.26,17.55,19.79,16.72ZM11,17H9V15h2Zm0-4H9L8.76,5h2.45Z\"/></g></svg>"}),
         $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные загружаются..."}),
         $('<div>', {id: 'image_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; color: red; font-weight: bold; display: none;", html: ""}),
         $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; max-height: 400px; overflow-y: auto;", html: "Данные загружаются..."}),
@@ -1130,7 +1166,7 @@ function update_ui_errors(){
 
         if ((warnings.length > 0) || (size_warnings.length > 0 && settings.show_same_size_files)){
             $('#warnings_data').show();
-            $('#warnings_data').css("color", "darkorange");
+            $('#warnings_data').css("color", "#FF7900");
             $('#warnings_data').css("font-weight", "bold");
             if (settings.show_same_size_files){
                 $('#warnings_data').html([...warnings, ...size_warnings].join("<\/br>"));
