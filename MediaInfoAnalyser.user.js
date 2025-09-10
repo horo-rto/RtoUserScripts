@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.7
+// @version      0.5.8
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -37,9 +37,6 @@ var size_warnings = [];
 // неправильно парсит mi
 // https://rutracker.org/forum/viewtopic.php?t=6732149
 // https://rutracker.org/forum/viewtopic.php?t=4387912
-//
-// не найден корейский main title, нет ошибки порядка языков
-// https://rutracker.org/forum/viewtopic.php?t=6710935
 
 class Settings{
     constructor(){
@@ -85,7 +82,7 @@ class MediaInfo{
 
     constructor() {
         this.isRussian = true;
-        this.isJapanese = false;
+        this.isOriginal = false;
     }
 
     parse(post){
@@ -155,6 +152,76 @@ class MediaInfo{
         }
 
         return out.join("");
+    }
+
+    recalculate_language_errors(country){
+        let lng1 = "", lng2 = "";
+        switch(country){
+            case "Япония":
+                lng1 = "Японский";
+                lng2 = "Japanese";
+                break;
+            case "Китай":
+                lng1 = "Китайский";
+                lng2 = "Chinese";
+                break;
+            case "Корея":
+                lng1 = "Корейский";
+                lng2 = "Korean";
+                break;
+        }
+
+        this.isRussian = true;
+        this.isOriginal = false;
+
+        for (let audio of this.audio) {
+            audio.languageError = 0;
+
+            if (!audio.isExt){
+                switch (audio.language)
+                {
+                    case "Русский":
+                    case "Russian":
+                        if (!media_info.isRussian) audio.languageError = 1;
+                        break;
+                    case lng1:
+                    case lng2:
+                        media_info.isRussian = false;
+                        media_info.isOriginal = true;
+                        break;
+                    default:
+                        media_info.isRussian = false;
+                        if (media_info.isOriginal) audio.languageError = 1;
+                        break;
+                }
+            }
+        }
+
+        console.log(this.audio);
+
+        this.isRussian = true;
+        this.isOriginal = false;
+
+        for (let subtl of this.subtl) {
+            subtl.languageError = 0;
+
+            switch (subtl.language)
+            {
+                case "Русский":
+                case "Russian":
+                    if (!media_info.isRussian) subtl.languageError = 1;
+                    break;
+                    case lng1:
+                    case lng2:
+                    media_info.isRussian = false;
+                    media_info.isOriginal = true;
+                    break;
+                default:
+                    media_info.isRussian = false;
+                    if (media_info.isOriginal) subtl.languageError = 1;
+                    break;
+            }
+        }
     }
 }
 class General {
@@ -330,7 +397,7 @@ class Audio {
                 line.replaceAll(/<.*?>/g, "") == "Аудио"){
                 this.isfirst = 1;
                 media_info.isRussian = true;
-                media_info.isJapanese = false;
+                media_info.isOriginal = false;
             }else if (line.startsWith("Title") || line.startsWith("Заголовок")){
                 this.title = line.split(" : ")[1];
             }else if ((line.startsWith("Format ") &&
@@ -403,11 +470,11 @@ class Audio {
                         case "Японский":
                         case "Japanese":
                             media_info.isRussian = false;
-                            media_info.isJapanese = true;
+                            media_info.isOriginal = true;
                             break;
                         default:
                             media_info.isRussian = false;
-                            if (media_info.isJapanese) this.languageError = 1;
+                            if (media_info.isOriginal) this.languageError = 1;
                             break;
                     }
                 }
@@ -505,7 +572,7 @@ class Text {
                 line.replaceAll(/<.*?>/g, "") == "Текст"){
                 this.isfirst = 1;
                 media_info.isRussian = true;
-                media_info.isJapanese = false;
+                media_info.isOriginal = false;
             }else if (line.startsWith("Title") || line.startsWith("Заголовок")){
                 this.title = line.split(" : ")[1];
             }else if (line.startsWith("Format ") || line.startsWith("Формат ")){
@@ -524,11 +591,11 @@ class Text {
                     case "Японский":
                     case "Japanese":
                         media_info.isRussian = false;
-                        media_info.isJapanese = true;
+                        media_info.isOriginal = true;
                         break;
                     default:
                         media_info.isRussian = false;
-                        if (media_info.isJapanese) this.languageError = 1;
+                        if (media_info.isOriginal) this.languageError = 1;
                         break;
                 }
             }else if (line.includes("Default") || line.includes("По умолчанию")){
@@ -607,7 +674,22 @@ class Anime {
             if (anidb_titles != null && anidb_titles[anime_db_id] != null ){
                 this.altr_anidb = anidb_titles[anime_db_id];
                 if (this.altr_anidb.filter(x => x.type == "main").length > 0){
-                    this.name = this.altr_anidb.filter(x => x.type == "main")[0]["#text"];
+                    let main = this.altr_anidb.filter(x => x.type == "main")[0]
+                    this.name = main["#text"];
+                    switch(main["xml:lang"]){
+                        case "x-jat":
+                            this.country = "Япония";
+                            break;
+                        case "x-zht":
+                            this.country = "Китай";
+                            break;
+                        case "x-kot":
+                            this.country = "Корея";
+                            break;
+                        default:
+                            this.country = main["xml:lang"];
+                            break;
+                    }
                 }else{
                     this.error = "Не найден главный заголовок, возможно, язык не поддерживается.";
                 }
@@ -637,7 +719,7 @@ class Anime {
             out.push(this.altr.join("<\/br>"));
             out.push("");
         }
-        out.push(this.year);
+        out.push(this.year + ", " + this.country);
         out.push(this.type + ", " + (this.episodes == 0 ? "?" : this.episodes) + " по " + this.duration + " мин");
         out.push(this.genres.join(", "));
         out.push(this.directors.join(", "));
@@ -753,7 +835,7 @@ function process_mi(post){
 
         if (media_info.video != null){
             console.log( media_info.dump() );
-            $('#mi_data').append(media_info.toString());
+            $('#mi_data').html(media_info.toString());
         }
     } catch (e) {
         console.error("Media info parcing error:", e);
@@ -1070,6 +1152,7 @@ function shiki_handler() {
     anime = new Anime(data, anidb_titles);
     console.log(anime);
     update_ui_shiki();
+    update_ui_mi();
 }
 
 // anidb
@@ -1259,6 +1342,10 @@ function update_ui_shiki(){
     }else{
         $('#shiki_data').hide();
     }
+}
+function update_ui_mi(){
+    media_info.recalculate_language_errors(anime.country);
+    $('#mi_data').html(media_info.toString());
 }
 
 // core web & data
