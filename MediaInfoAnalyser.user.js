@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.14
+// @version      0.5.15
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1044,8 +1044,8 @@ class Folder{
                 }
             }
         }else if(this.files.length == 1){
-            this.cutFromStart = parentObj.cutFromStart;
-            this.cutFromEnd = parentObj.cutFromEnd;
+            this.cutFromStart = parentObj?.cutFromStart ?? 0;
+            this.cutFromEnd = parentObj?.cutFromEnd ?? 0;
         }
     }
 
