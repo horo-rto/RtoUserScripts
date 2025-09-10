@@ -1269,7 +1269,7 @@ function create_ui(){
                     "-27z m1261 -4064 c606 -56 1140 -380 1474 -896 487 -753 381 -1776 -250 -2418 -310 -314 -684 -505 -1119 -570 -144 -21 -405 -21 -550 0 -417 61 -800 251 -1095 545 -167 166 "+
                     "-280 326 -385 543 -143 295 -204 586 -192 917 15 386 124 721 338 1035 396 581 1086 908 1779 844z\"/></g></svg>",
                     click: function( event ) { $('#assist_box_settings').animate({ height: 'toggle' }); }}),
-        $('<div>', {id: 'assist_box_settings', style: "bottom:0px; left: 0px; width: 100%; border-top: 1px solid #80808080; "/*display: none;*/}).append([
+        $('<div>', {id: 'assist_box_settings', style: "bottom:0px; left: 0px; width: 100%; border-top: 1px solid #80808080; display: none;"}).append([
             $('<div>', {style: "margin-top: 10px; margin-bottom: 10px;"}).append([
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_shiki' }),
                 $( '<label>', { html: 'Запрашивать информацию из API Shikimori (требует дополнительный запрос к API)', style: 'margin-left: 2px;', for: 'input_parce_shiki' }),
