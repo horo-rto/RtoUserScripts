@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.8
+// @version      0.5.9
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -25,7 +25,6 @@ var size_warnings = [];
 // clean cashe
 // icons for links
 // перенос ссылок если их много
-// выделять русские лосслесс дороги
 //
 // files bugs:
 // https://rutracker.org/forum/viewtopic.php?t=6220551
@@ -83,6 +82,10 @@ class MediaInfo{
     constructor() {
         this.isRussian = true;
         this.isOriginal = false;
+
+        this.biggestOriginalBitrate = -1;
+
+        this.release_type = parse_title()[2];
     }
 
     parse(post){
@@ -125,6 +128,8 @@ class MediaInfo{
                 }
             }
         }
+
+        this.detect_original_sound_bitrate("Японский", "Japanese");
     }
 
     dump(){
@@ -154,7 +159,13 @@ class MediaInfo{
         return out.join("");
     }
 
-    recalculate_language_errors(country){
+    detect_original_sound_bitrate(lng1, lng2){
+        var orig_audio = [...this.audio, ...this.extra].filter(x => x.language == lng1 || x.language == lng2);
+        orig_audio = orig_audio.sort((a, b) => b.bitrate.replace(/\D+/, "") - a.bitrate.replace(/\D+/, ""));
+        this.biggestOriginalBitrate = orig_audio[0].bitrate.replace(/\D+/, "");
+    }
+
+    get_origin_languages(country){
         let lng1 = "", lng2 = "";
         switch(country){
             case "Япония":
@@ -170,6 +181,12 @@ class MediaInfo{
                 lng2 = "Korean";
                 break;
         }
+        return [lng1, lng2];
+    }
+
+    recalculate_language_errors(country){
+        let [lng1, lng2] = this.get_origin_languages(country);
+        this.detect_original_sound_bitrate(lng1, lng2);
 
         this.isRussian = true;
         this.isOriginal = false;
@@ -196,8 +213,6 @@ class MediaInfo{
                 }
             }
         }
-
-        console.log(this.audio);
 
         this.isRussian = true;
         this.isOriginal = false;
@@ -508,6 +523,10 @@ class Audio {
         if (media_info.video.size != -1 && media_info.video.size < this.size*3){
             var sizeError = true;
         }
+        if ((this.language == "Русский" || this.language == "Russian") &&
+            Number(media_info.biggestOriginalBitrate)*1.5 < Number(this.bitrate.replace(/\D+/, ""))){
+            var bitrateError = true;
+        }
 
         if (this.percentage < 0){
             line += "<span style=\"color: #ee7600; font-weight: bold;\">[xx%]</span>";
@@ -527,7 +546,17 @@ class Audio {
             }
         }
 
-        line += " " + this.codec;
+        if ((this.language == "Русский" || this.language == "Russian") &&
+            (this.codec == "PCM" || this.codec == "FLAC")){
+            if (media_info.release_type == "WEB-DL" || media_info.release_type == "WEBRip" ||
+                media_info.release_type == "DVDRip" || media_info.release_type == "HDTVRip"){
+                line += " <span style=\"color: red; font-weight: bold;\">" + this.codec + "</span>";
+            }else{
+                line += " <span style=\"color: #ee7600; font-weight: bold;\">" + this.codec + "</span>";
+            }
+        }else{
+            line += " " + this.codec;
+        }
 
         if (this.lfe == 1){
             line += " " + (this.channels - 1) + ".1, ";
@@ -538,7 +567,7 @@ class Audio {
         if (this.bitrate == -1){
             line += "<span style=\"color: #ee7600; font-weight: bold;\">???kbps</span> ";
         }else{
-            if (sizeError){
+            if (sizeError || bitrateError){
                 line += "<span style=\"color: red; font-weight: bold;\">" + this.bitrate + "</span> ";
             }else{
                 line += this.bitrate + " ";
@@ -743,7 +772,7 @@ class Anime {
             case "official_site":
                 return "Site";
             case "wikipedia":
-                return "Wiki."+link.url.slice(8, 10).toUpperCase();
+                return "Wiki."+link.url.replace("https://", "").replace("http://", "").slice(0, 2).toUpperCase();
             case "anime_news_network":
                 return "ANN";
             case "myanimelist":
@@ -859,6 +888,29 @@ function image_processing(post){
     }catch(e){
         console.error("Image processing error:", e);
     }
+}
+function parse_title(){
+    let tags = document.title.match(/\[.*?\]/g);
+
+    let lastTag = tags[tags.length-1];
+    if (lastTag == "[HD]"){
+        var ref = 3;
+    }else if (lastTag == "[720p]" || lastTag == "[960p]" || lastTag == "[1080p]" || lastTag == "[2160p]" || lastTag == "[HWP]"){
+        ref = 2;
+    }else{
+        ref = 1;
+    }
+
+    var split = tags[tags.length-ref].slice(1, -1).split(",");
+
+    let year = split[0].slice(0, 4);
+    let release = split[split.length - 1];
+    let type = tags[0].slice(1, -1).toLowerCase();
+    if(type.includes("+")){
+        type = type.split("+")[0];
+    }
+
+    return [type.trim(), year.trim(), release.trim()]
 }
 
 // files processing
@@ -1095,22 +1147,8 @@ function search_handler() {
 
     try{
         var animes = JSON.parse(this.responseText).data.animes;
-        let tags = document.title.match(/\[.*?\]/g);
 
-        let lastTag = tags[tags.length-1];
-        if (lastTag == "[HD]"){
-            var year = tags[tags.length-3].slice(1, -1).split(",")[0];
-        }else if (lastTag == "[720p]" || lastTag == "[960p]" || lastTag == "[1080p]" || lastTag == "[2160p]" || lastTag == "[HWP]"){
-            year = tags[tags.length-2].slice(1, -1).split(",")[0];
-        }else{
-            year = tags[tags.length-1].slice(1, -1).split(",")[0];
-        }
-
-        let type = tags[0].slice(1, -1).toLowerCase();
-        if(type.includes("+")){
-            type = type.split("+")[0];
-        }
-
+        var [type, year, release] = parse_title();
         for(let an of animes){
             if (an.kind == type && an.airedOn.year == year){
                 load_shiki(an.id)
