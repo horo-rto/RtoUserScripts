@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.10
+// @version      0.5.11
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -22,7 +22,6 @@ var warnings = [];
 var size_warnings = [];
 
 // todo:
-// clean cashe
 // icons for links
 // перенос ссылок если их много
 //
@@ -1270,7 +1269,7 @@ function create_ui(){
                     "-27z m1261 -4064 c606 -56 1140 -380 1474 -896 487 -753 381 -1776 -250 -2418 -310 -314 -684 -505 -1119 -570 -144 -21 -405 -21 -550 0 -417 61 -800 251 -1095 545 -167 166 "+
                     "-280 326 -385 543 -143 295 -204 586 -192 917 15 386 124 721 338 1035 396 581 1086 908 1779 844z\"/></g></svg>",
                     click: function( event ) { $('#assist_box_settings').animate({ height: 'toggle' }); }}),
-        $('<div>', {id: 'assist_box_settings', style: "bottom:0px; left: 0px; width: 100%; border-top: 1px solid #80808080; display: none;"}).append([
+        $('<div>', {id: 'assist_box_settings', style: "bottom:0px; left: 0px; width: 100%; border-top: 1px solid #80808080; "/*display: none;*/}).append([
             $('<div>', {style: "margin-top: 10px; margin-bottom: 10px;"}).append([
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_shiki' }),
                 $( '<label>', { html: 'Запрашивать информацию из API Shikimori (требует дополнительный запрос к API)', style: 'margin-left: 2px;', for: 'input_parce_shiki' }),
@@ -1281,12 +1280,15 @@ function create_ui(){
                 $( '<label>', { html: 'Отображать синонимы с AniDB', style: 'margin-left: 2px;', for: 'input_show_anydb_synonyms' }),
                 $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files' }),
-                $( '<label>', { html: 'Анализировать файлы в раздаче (требует дополнительный запрос к трекеру)', style: 'margin-left: 2px;',  for: 'input_parce_files' }),
+                $( '<label>', { html: 'Анализировать файлы в раздаче (требует дополнительный запрос к трекеру)', style: 'margin-left: 2px;', for: 'input_parce_files' }),
                 $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files_on_completed' }),
                 $( '<label>', { html: 'Анализировать файлы в проверенных раздачах', style: 'margin-left: 2px;', for: 'input_parce_files_on_completed' }),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_same_size_files' }),
                 $( '<label>', { html: 'Сравнивать размер файлов', style: 'margin-left: 2px;', for: 'input_show_same_size_files' }),
+                $('<br>'),
+                $( '<div>', { html: 'Очистить кеш названий AniDB', click: function() { GM_setValue("anidb_titles", null); location.reload(); },
+                              style: 'margin-top: 3px; padding: 3px 12px; background-color: #A0A0A0; text-align: center; cursor: pointer; border-radius: 5px; width: 97%;'}),
             ])
         ])
     ]);
