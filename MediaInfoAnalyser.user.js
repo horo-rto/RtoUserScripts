@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.15
+// @version      0.5.16
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1319,7 +1319,7 @@ function create_ui(){
             $('<div>', {id: 'assist_box_arrow_right', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯈"}),
             $('<div>', {id: 'assist_box_arrow_left', style: "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: gray;", html: "⯇"})
         ]),
-        $('<div>', {id: 'shiki_untrusted', style: "position: absolute; right: 11px; top: 7px; width: 20px; height: 20px;",
+        $('<div>', {id: 'shiki_untrusted', style: "position: absolute; right: 11px; top: 7px; width: 20px; height: 20px; display: none;",
                     title: "Данные получены через поиск и могут быть ошибочными!",
                     html: "<?xml version=\"1.0\" encoding=\"utf-8\"?>"+
                     "<svg fill=\"#404040\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\">"+
