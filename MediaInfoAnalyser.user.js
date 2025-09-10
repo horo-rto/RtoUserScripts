@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.9
+// @version      0.5.10
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -523,9 +523,11 @@ class Audio {
         if (media_info.video.size != -1 && media_info.video.size < this.size*3){
             var sizeError = true;
         }
-        if ((this.language == "Русский" || this.language == "Russian") &&
-            Number(media_info.biggestOriginalBitrate)*1.5 < Number(this.bitrate.replace(/\D+/, ""))){
-            var bitrateError = true;
+        if (this.language == "Русский" || this.language == "Russian"){
+            if ((Number(media_info.biggestOriginalBitrate) <= 256 && Number(this.bitrate.replace(/\D+/, "")) > 256) ||
+                (Number(media_info.biggestOriginalBitrate) > 256 && Number(this.bitrate.replace(/\D+/, "")) > Number(media_info.biggestOriginalBitrate)*1.5)){
+                var bitrateError = true;
+            }
         }
 
         if (this.percentage < 0){
