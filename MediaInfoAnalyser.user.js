@@ -297,13 +297,17 @@ class Video {
                         .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
                     this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
                 }
-            }else if (line.includes("BitRate") || line.includes("Bit rate") || line.includes("Битрейт")){
+            }else if (line.startsWith("FromStats_BitRate")){
+                this.bitrate = Math.round(line.split(" : ")[1] / 1024) + "kbps";
+            }else if (line.startsWith("BitRate") || line.includes("Bit rate") || line.includes("Битрейт")){
                 this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
                     .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
                     .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }else if (line.includes("BitDepth") || line.includes("Bit depth") || line.includes("Битовая глубина")){
                 this.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
+            }else if (line.startsWith("FromStats_StreamSize")){
+                this.size = Math.round(line.split(" : ")[1] / (1024*1024));
             }else if (line.startsWith("StreamSize") || line.includes("Stream size") || line.includes("Размер потока")){
                 var newline = line.split(" : ")[1].split("(");
                 var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
@@ -453,13 +457,17 @@ class Audio {
                 this.channels = line.split(" : ")[1].split(" ")[0];
             }else if (line.includes("Channel layout") || line.includes("Channel positions") || line.includes("Расположение каналов")){
                 if (line.includes("LFE")) this.lfe = 1;
-            }else if (line.includes("BitRate") || line.includes("Bit rate") || line.includes("Битрейт")){
+            }else if (line.startsWith("FromStats_BitRate")){
+                this.bitrate = Math.round(line.split(" : ")[1] / 1024) + "kbps";
+            }else if (line.startsWith("BitRate") || line.includes("Bit rate") || line.includes("Битрейт")){
                 this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
                     .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
                     .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }else if (line.includes("SamplingRate") || line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
                 this.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
+            }else if (line.startsWith("FromStats_StreamSize")){
+                this.size = Math.round(line.split(" : ")[1] / (1024*1024));
             }else if (line.startsWith("StreamSize") || line.includes("Stream size") || line.includes("Размер потока")){
                 var newline = line.split(" : ")[1].split("(");
                 var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
