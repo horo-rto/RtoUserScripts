@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.13
+// @version      0.5.14
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -304,7 +304,7 @@ class Video {
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }else if (line.includes("BitDepth") || line.includes("Bit depth") || line.includes("Битовая глубина")){
                 this.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
-            }else if (line.includes("StreamSize") || line.includes("Stream size") || line.includes("Размер потока")){
+            }else if (line.startsWith("StreamSize") || line.includes("Stream size") || line.includes("Размер потока")){
                 var newline = line.split(" : ")[1].split("(");
                 var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
                 var value = newline[0].replaceAll(/[0-9,\. ]/g, '');
@@ -460,7 +460,7 @@ class Audio {
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }else if (line.includes("SamplingRate") || line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
                 this.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
-            }else if (line.includes("StreamSize") || line.includes("Stream size") || line.includes("Размер потока")){
+            }else if (line.startsWith("StreamSize") || line.includes("Stream size") || line.includes("Размер потока")){
                 var newline = line.split(" : ")[1].split("(");
                 var size = newline[0].replaceAll(/[a-zA-Zа-яА-Я ]/g, '');
                 var value = newline[0].replaceAll(/[0-9,\. ]/g, '');
