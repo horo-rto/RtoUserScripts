@@ -24,11 +24,22 @@ var size_warnings = [];
 // todo:
 // clean cashe
 // icons for links
+// перенос ссылок если их много
+// выделять русские лосслесс дороги
+//
 // files bugs:
 // https://rutracker.org/forum/viewtopic.php?t=6220551
+//
 // no mi:
 // https://rutracker.org/forum/viewtopic.php?t=6679139
 // https://rutracker.org/forum/viewtopic.php?t=6428442
+//
+// неправильно парсит mi
+// https://rutracker.org/forum/viewtopic.php?t=6732149
+// https://rutracker.org/forum/viewtopic.php?t=4387912
+//
+// не найден корейский main title, нет ошибки порядка языков
+// https://rutracker.org/forum/viewtopic.php?t=6710935
 
 class Settings{
     constructor(){
@@ -126,7 +137,8 @@ class MediaInfo{
     toString() {
         var out = [];
 
-        if (this.video.bitrate == -1 && this.genrl != null) {
+        var err = this.audio.filter(x => x.bitrate == -1);
+        if ((err.length > 0 || this.video.bitrate == -1) && this.genrl != null) {
             out.push(this.genrl.toString());
             out.push("<hr>");
         }
@@ -196,6 +208,13 @@ class Video {
                 }
             }else if (line.includes("Frame rate") || (line.includes("Частота кадров") && !line.includes("Частота кадров в оригинале"))){
                 this.fps = line.split(" : ")[1].split(" ")[0].replace(",", ".");
+            }else if (line.includes("Nominal bit rate") || line.includes("Номинальный битрейт")){
+                if (this.bitrate == -1){
+                    this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
+                        .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
+                        .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+                    this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
+                }
             }else if (line.includes("Bit rate") || line.includes("Битрейт")){
                 this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll(/ /g, '')
                     .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
@@ -215,7 +234,7 @@ class Video {
                 this.percentage = newline[1].slice(0,-2);
             }else if (line.includes("Language") || line.includes("Язык")){
                 this.language = line.split(" : ")[1];
-            }else if (line.includes("Default") || line.includes("По умолчанию")){
+            }else if (line.includes("Default") || line.includes("По умолчанию") || line.includes("Дорожка по умолчанию")){
                 if (line.split(" : ")[1] == "Да" || line.split(" : ")[1] == "Yes"){
                     this.default = 1;
                 }else{
@@ -411,13 +430,15 @@ class Audio {
     toString() {
         var line = "";
         if (this.default == 1 && this.isfirst != 1){
-            line += (this.default == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
+            line += "<span style=\"color: red; font-weight: bold;\">[x]</span>";
+        }else if (this.default != 1 && this.isfirst == 1){
+            line += "<span style=\"color: red; font-weight: bold;\">[?]</span>";
         }else{
             line += (this.default == 1 ? "[x]" : "[ ]" );
         }
         line += (this.forced == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
 
-        if (media_info.video.size < this.size*3){
+        if (media_info.video.size != -1 && media_info.video.size < this.size*3){
             var sizeError = true;
         }
 
@@ -585,7 +606,13 @@ class Anime {
 
             if (anidb_titles != null && anidb_titles[anime_db_id] != null ){
                 this.altr_anidb = anidb_titles[anime_db_id];
-                this.name = this.altr_anidb.filter(x => x.type == "main")[0]["#text"];
+                if (this.altr_anidb.filter(x => x.type == "main").length > 0){
+                    this.name = this.altr_anidb.filter(x => x.type == "main")[0]["#text"];
+                }else{
+                    this.error = "Не найден главный заголовок, возможно, язык не поддерживается.";
+                }
+            }else{
+                this.error = "Произведение не найдено в кеше заголовков. Обновите .xml файл:";
             }
         }
 
@@ -624,17 +651,17 @@ class Anime {
     }
 
     getLinks(){
-        return Array.from(this.links, link => "<a href =\""+ link.url +"\" target=\"_blank\" >" + this.getLogo(link.kind) + "</a>").join(" ");
+        return Array.from(this.links, link => "<a href =\""+ link.url +"\" target=\"_blank\" >" + this.getLogo(link) + "</a>").join(" ");
     }
 
-    getLogo(name){
-        switch(name){
+    getLogo(link){
+        switch(link.kind){
             case "shikimori":
                 return "Shiki";
             case "official_site":
                 return "Site";
             case "wikipedia":
-                return "Wiki";
+                return "Wiki."+link.url.slice(8, 10).toUpperCase();
             case "anime_news_network":
                 return "ANN";
             case "myanimelist":
@@ -645,6 +672,20 @@ class Anime {
                 return "WA";
             case "twitter":
                 return "X";
+            case "kinopoisk_hd":
+                return "KP_HD";
+            case "kinopoisk":
+                return "KP";
+            case "okko":
+                return "okko";
+            case "wink":
+                return "wink";
+            case "amediateka":
+                return "amtk";
+            case "kage_project":
+                return "kage";
+            default:
+                return link.kind;
         }
     }
 
@@ -838,6 +879,11 @@ function files_processing(){
         update_ui_errors();
         return;
     }
+    if (document.title.includes("DVD5") || document.title.includes("DVD9")){
+        warnings.push("DVD разметка не анализируется");
+        update_ui_errors();
+        return;
+    }
 
     // create data structure
 
@@ -970,8 +1016,10 @@ function search_handler() {
         let tags = document.title.match(/\[.*?\]/g);
 
         let lastTag = tags[tags.length-1];
-        if (lastTag == "[720p]" || lastTag == "[960p]" || lastTag == "[1080p]" || lastTag == "[2160p]"){
-            var year = tags[tags.length-2].slice(1, -1).split(",")[0];
+        if (lastTag == "[HD]"){
+            var year = tags[tags.length-3].slice(1, -1).split(",")[0];
+        }else if (lastTag == "[720p]" || lastTag == "[960p]" || lastTag == "[1080p]" || lastTag == "[2160p]" || lastTag == "[HWP]"){
+            year = tags[tags.length-2].slice(1, -1).split(",")[0];
         }else{
             year = tags[tags.length-1].slice(1, -1).split(",")[0];
         }
@@ -1197,8 +1245,8 @@ function update_ui_shiki(){
     if (settings.parce_shiki){
         var text = anime.toString();
 
-        if (anime.name == null){
-            text += "<\/br><\/br><span style=\"color:red;font-weight:bold;\">Кеш названий устарел. Обновите .xml файл:</span><\/br>"+
+        if (anime.error){
+            text += "<\/br><\/br><span style=\"color:red;font-weight:bold;\">" + anime.error + "</span><\/br>"+
                 "<a href=\"http://anidb.net/api/anime-titles.xml.gz\" target=\"_blank\">http://anidb.net/api/anime-titles.xml.gz</a><\/br>" +
                 "<form id=\"import_titles_form\" onsubmit=\"event.preventDefault();\"><input type=\"file\" id=\"import_title\" accept=\".xml\" ></form>";
         }
