@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.12
+// @version      0.5.13
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1211,6 +1211,12 @@ function search_handler() {
         var [type, year, release] = parse_title();
         for(let an of animes){
             if (an.kind == type && an.airedOn.year == year){
+                load_shiki(an.id)
+                return;
+            }
+        }
+        for(let an of animes){
+            if (an.airedOn.year == year){
                 load_shiki(an.id)
                 return;
             }
