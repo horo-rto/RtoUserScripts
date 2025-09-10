@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.6
+// @version      0.5.7
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1089,8 +1089,10 @@ function import_titles(event) {
             if (tmp_ob.animetitles.anime[i].title != null){
                 if (Array.isArray(tmp_ob.animetitles.anime[i].title)){
                     anidb_titles[tmp_ob.animetitles.anime[i].aid] =
-                        tmp_ob.animetitles.anime[i].title.filter(x => x["xml:lang"] == "x-jat" || x["xml:lang"] == "ja" || x["xml:lang"] == "ru" || x["xml:lang"] == "en"
-                                                                 || x["xml:lang"] == "zh-Hans" || x["xml:lang"] == "zh-Hant" || x["xml:lang"] == "x-zht");
+                        tmp_ob.animetitles.anime[i].title.filter(x => x["xml:lang"] == "ru" || x["xml:lang"] == "en" ||
+                                                                 x["xml:lang"] == "x-jat" || x["xml:lang"] == "ja" ||
+                                                                 x["xml:lang"] == "x-zht" || x["xml:lang"] == "zh-Hans" || x["xml:lang"] == "zh-Hant" ||
+                                                                 x["xml:lang"] == "x-kot" || x["xml:lang"] == "ko");
                 }
             }
         }
