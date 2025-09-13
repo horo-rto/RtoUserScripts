@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.19
+// @version      0.5.20
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -156,7 +156,7 @@ class MediaInfo{
     detect_original_sound_bitrate(lng1, lng2){
         var orig_audio = [...this.audio, ...this.extra].filter(x => x.language == lng1 || x.language == lng2);
         if (orig_audio.length > 0) {
-            orig_audio = orig_audio.sort((a, b) => b.bitrate.replace(/\D+/, "") - a.bitrate.replace(/\D+/, ""));
+            orig_audio = orig_audio.sort((a, b) => b.bitrate.toString().replace(/\D+/, "") - a.bitrate.toString().replace(/\D+/, ""));
             if (orig_audio[0].bitrate != -1){
                 this.biggestOriginalBitrate = orig_audio[0].bitrate.replace(/\D+/, "");
             }
@@ -934,6 +934,8 @@ function process_mi(spoilers){
         $('#mi_data').css("color", "red");
         $('#mi_data').css("font-weight", "bold");
         $('#mi_data').html("Отчет Media Info не найден.");
+
+        return;
     }
 
     try{
@@ -943,7 +945,9 @@ function process_mi(spoilers){
         console.error("Media info parcing error:", e);
         $('#mi_data').css("color", "red");
         $('#mi_data').css("font-weight", "bold");
-        $('#mi_data').html("Ошибка парминга Media Info.");
+        $('#mi_data').html("Ошибка парсинга Media Info.");
+
+        return;
     }
 
     try{
