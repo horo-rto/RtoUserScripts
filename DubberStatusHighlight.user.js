@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name         RTO Dubber status highlight
 // @namespace    http://tampermonkey.net/
-// @version      0.2.3
+// @version      0.2.4
 // @description  Hightlight dubbers with the color
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/DubberStatusHighlight.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
 // @match        https://rutracker.net/forum/viewtopic.php?t=*
-// @match        https://rutracker.nl/forum/viewtopic.php?t=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rutracker.org
 // @grant        GM_getValue
 // @grant        GM_setValue
