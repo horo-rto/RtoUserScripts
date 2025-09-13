@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.17
+// @version      0.5.18
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -997,6 +997,16 @@ class Folder{
                                             x.type.includes("ass") ||
                                             x.type.includes("srt"));
 
+        this.files = this.files.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (this.files.filter(x => x.type.includes("mkv") || x.type.includes("mp4") || x.type.includes("avi")).length > (this.files.length / 2)){
+            this.type = "vid";
+        }else if(this.files.filter(x => x.type.includes("ass") || x.type.includes("srt")).length > (this.files.length / 2)){
+            this.type = "sub";
+        }else if(this.files.filter(x => x.type.includes("mka")).length > (this.files.length / 2)){
+            this.type = "mka";
+        }
+
         this.parent = parentObj;
 
         this.fullPath = this.parent ? (this.parent.fullPath + "/" + this.name) : this.name;
@@ -1005,7 +1015,6 @@ class Folder{
             this.fullPath.includes("NC") ||
             this.fullPath.includes("PV") ||
             this.fullPath.includes("CM") ||
-            //this.fullPath.includes("Special") ||
             this.fullPath.includes("Bonus") ||
             this.files.length == 0){
             this.ignore = true;
@@ -1119,7 +1128,7 @@ function files_processing(){
 
     for (let folder of folders) {
         for (let file of folder.files) {
-            if(file.name.match(/[^A-Za-zА-Яа-я0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
+            if(file.name.match(/[^A-Za-zА-Яа-яЁё0-9 !#$%&'(),;=@^_~\-\[\]\+\.]/gm) != null) {
                 errors.push("Запрещенные символы: " + file.name);
             }
         }
@@ -1128,10 +1137,11 @@ function files_processing(){
     folders = folders.filter(x => !x.ignore);
 
     var root = folders[0];
-    var specials = folders.filter(x => x.fullPath.includes("Special"))[0];
-    var video_files = [...root.files, ...(specials?.files ?? [])];
+    var video_dirs = folders.filter(x => x.type == "vid");
+    var video_files = Array.from(video_dirs, x => x.files).flat();
+    console.log(video_files);
 
-    if (folders.length > 1){
+    if (folders.filter(x => x.type != "vid").length > 1){
         for (let episode of video_files) {
             let noTranslation = true;
             for (let folder of folders.filter(x => x.parent)) {
@@ -1147,18 +1157,16 @@ function files_processing(){
         }
     }
 
-    for (let folder of folders.filter(x => !x.fullPath.includes("Special"))) {
+    for (let folder of folders.filter(x => x.type != "vid")) {
         for (let trnsl of folder.files) {
-            if (trnsl.type != "mkv" && trnsl.type != "mp4" && trnsl.type != "avi"){
-                let has_video = false;
-                for (let episode of video_files) {
-                    if (trnsl.name.startsWith(episode.name)){
-                        has_video = true;
-                    }
+            let has_video = false;
+            for (let episode of video_files) {
+                if (trnsl.name.startsWith(episode.name)){
+                    has_video = true;
                 }
-                if (!has_video){
-                    errors.push("В папке " + folder.getHtmlPath() + " у перевода нет видео: " + trnsl.name);
-                }
+            }
+            if (!has_video){
+                errors.push("В папке " + folder.getHtmlPath() + " у перевода нет видео: " + trnsl.name);
             }
         }
 
