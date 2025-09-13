@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.16
+// @version      0.5.17
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -88,7 +88,7 @@ class MediaInfo{
             }
         }
 
-        // console.log(mi_spoiler.replaceAll("<br>", "\n"));
+        //console.log(mi_spoiler.replaceAll("<br>", "\n"));
 
         if(mi_spoiler.includes("Общее")){
             var reports = mi_spoiler.split("Общее<br>");
@@ -156,7 +156,6 @@ class MediaInfo{
     detect_original_sound_bitrate(lng1, lng2){
         var orig_audio = [...this.audio, ...this.extra].filter(x => x.language == lng1 || x.language == lng2);
         if (orig_audio.length > 0) {
-            console.log(orig_audio);
             orig_audio = orig_audio.sort((a, b) => b.bitrate.replace(/\D+/, "") - a.bitrate.replace(/\D+/, ""));
             if (orig_audio[0].bitrate != -1){
                 this.biggestOriginalBitrate = orig_audio[0].bitrate.replace(/\D+/, "");
@@ -244,7 +243,7 @@ class General {
         for (const line of lines) {
             if (line.includes("File size") || line.includes("Размер файла")){
                 this.size = line.split(" : ")[1];
-            }else if (line.includes("Overall bit rate") || line.includes("Общий битрейт")){
+            }else if (line.includes("Overall bit rate") || line.includes("Общий битрейт") || line.includes("Общий поток")){
                 this.bitrate = line.split(" : ")[1].replaceAll(/ /g, '').replaceAll("Кбит/сек","kbps").replaceAll("kb/s","kbps").replaceAll("Мбит/сек","Mbps").replaceAll("Mb/s","Mbps");
             }
         }
@@ -829,11 +828,13 @@ class Anime {
 }
 
 class Div {
-    constructor(data, iter) {
+    constructor(data, iter, depth) {
         let text = "";
         this.nodes = [];
 
-        let depth = data[iter].depth;
+        if (depth == null){
+            depth = data[iter].depth;
+        }
 
         for(let i = iter; i < data.length; i++){
             if (data[i].depth == depth){
@@ -923,7 +924,7 @@ function create_html_structure(post){
         if (line == "</div>") depth--;
     }
 
-    return new Div(data, 0);
+    return new Div(data, 0, 0);
 }
 function process_mi(spoilers){
     try{
