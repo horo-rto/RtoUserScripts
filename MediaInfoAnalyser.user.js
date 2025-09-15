@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.22
+// @version      0.5.23
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -317,7 +317,7 @@ class Video {
                 if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" || value == "ГиБ" || value == "Гибайт" ){
                     this.size = size.replace(",", ".")*1024;
                 }else{
-                    this.size = size;
+                    this.size = size.replace(",", ".");
                 }
                 this.percentage = newline[1].slice(0,-2);
             }else if (line.includes("Language") || line.includes("Язык")){
@@ -477,7 +477,7 @@ class Audio {
                 if (value == "Гбайт" || value == "Гигабайт" || value == "GiB" || value == "ГиБ" || value == "Гибайт" ){
                     this.size = size.replace(",", ".")*1024;
                 }else{
-                    this.size = size;
+                    this.size = size.replace(",", ".");
                 }
                 this.percentage = newline[1].slice(0,-2);
             }else if (line.includes("Delay relative to video") || line.includes("Задержка видео")){
