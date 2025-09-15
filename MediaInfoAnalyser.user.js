@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.21
+// @version      0.5.22
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1194,7 +1194,7 @@ function files_processing(){
                 }
             }
             if (noTranslation){
-                errors.push("Нет перевода на эпизод " + episode.epNumber);
+                errors.push("Нет внешнего перевода на эпизод " + episode.epNumber);
             }
         }
     }
