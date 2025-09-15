@@ -1029,7 +1029,7 @@ class Folder{
 
         this.files = this.files.sort((a, b) => a.name.localeCompare(b.name));
 
-        if (this.files.filter(x => x.type.includes("mkv") || x.type.includes("mp4") || x.type.includes("avi")).length > (this.files.length / 2)){
+        if (this.files.filter(x => x.type.includes("mkv") || x.type.includes("mp4") || x.type.includes("avi")).length >= (this.files.length / 2)){
             this.type = "vid";
         }else if(this.files.filter(x => x.type.includes("ass") || x.type.includes("srt")).length > (this.files.length / 2)){
             this.type = "sub";
