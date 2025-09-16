@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.28
+// @version      0.5.29
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -43,6 +43,9 @@ class Settings{
             this.parce_shiki = parsed.parce_shiki ?? this.#default.parce_shiki;
             this.show_shiki_synonyms = parsed.show_shiki_synonyms ?? this.#default.show_shiki_synonyms;
             this.show_anydb_synonyms = parsed.show_anydb_synonyms ?? this.#default.show_anydb_synonyms;
+            this.show_japanese = parsed.show_japanese ?? this.#default.show_japanese;
+            this.show_chineese = parsed.show_chineese ?? this.#default.show_chineese;
+            this.show_korean = parsed.show_korean ?? this.#default.show_korean;
         } catch (e) {
             console.warn("Settings reading error: " + e.message + "; settings are set to default.");
             Object.assign(this, this.#default);
@@ -60,7 +63,10 @@ class Settings{
         parce_files_on_completed: true,
         parce_shiki : true,
         show_shiki_synonyms: true,
-        show_anydb_synonyms: true
+        show_anydb_synonyms: true,
+        show_japanese: false,
+        show_chineese: false,
+        show_korean: false
     }
 }
 
@@ -710,7 +716,7 @@ class Anime {
         this.directors = Array.from(data.personRoles.filter(x => x.rolesEn.includes("Director")), x => x.person.russian);
         this.studios = Array.from(data.studios, x => x.name);
 
-        this.links = data.externalLinks;
+        this.links = data.externalLinks.filter(x => x.kind != "shiki");
         this.links.push({kind : "shikimori", url : "https://shikimori.one/animes/"+ this.id});
 
         if (this.links.filter(x => x.kind=="anime_db").length > 0){
@@ -820,10 +826,14 @@ class Anime {
         this.altr = [];
 
         if (settings.show_shiki_synonyms){
-            this.altr = [(this.#src.licenseNameRu ? this.#src.russian : null), this.#src.name, this.#src.english, this.#src.japanese, ...this.#src.synonyms];
+            this.altr = [(this.#src.licenseNameRu ? this.#src.russian : null), this.#src.name, this.#src.english, ...this.#src.synonyms];
         }
         if (settings.show_anydb_synonyms) {
-            this.altr = [...this.altr, ...(this.altr_anidb ? Array.from(this.altr_anidb, x => x["#text"]) : [])];
+            let filtered = this.altr_anidb
+            if (!settings.show_japanese) filtered = filtered.filter(x => x["xml:lang"] != "ja");
+            if (!settings.show_chineese) filtered = filtered.filter(x => x["xml:lang"] != "zh-Hans" && x["xml:lang"] != "zh-Hant");
+            if (!settings.show_korean) filtered = filtered.filter(x => x["xml:lang"] != "ko");
+            this.altr = [...this.altr, ...(this.altr_anidb ? Array.from(filtered, x => x["#text"]) : [])];
         }
 
         this.altr = this.altr
@@ -1479,6 +1489,13 @@ function create_ui(){
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_anydb_synonyms' }),
                 $( '<label>', { html: 'Отображать синонимы с AniDB', style: 'margin-left: 2px;', for: 'input_show_anydb_synonyms' }),
                 $('<br>'),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_show_japanese' }),
+                $( '<label>', { html: 'Японские заголовки', style: 'margin-left: 2px;', for: 'input_show_japanese' }),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_chineese' }),
+                $( '<label>', { html: 'Китайские заголовки', style: 'margin-left: 2px;', for: 'input_show_chineese' }),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_korean' }),
+                $( '<label>', { html: 'Корейские заголовки', style: 'margin-left: 2px;', for: 'input_show_korean' }),
+                $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_files' }),
                 $( '<label>', { html: 'Анализировать файлы в раздаче (требует дополнительный запрос к трекеру)', style: 'margin-left: 2px;', for: 'input_parce_files' }),
                 $('<br>'),
@@ -1506,6 +1523,12 @@ function update_settings(){
     $("#input_show_shiki_synonyms").prop( "disabled", !settings.parce_shiki );
     settings.show_anydb_synonyms = $('#input_show_anydb_synonyms').is(":checked");
     $("#input_show_anydb_synonyms").prop( "disabled", !settings.parce_shiki );
+    settings.show_japanese = $('#input_show_japanese').is(":checked");
+    $("#input_show_japanese").prop( "disabled", !settings.parce_shiki );
+    settings.show_chineese = $('#input_show_chineese').is(":checked");
+    $("#input_show_chineese").prop( "disabled", !settings.parce_shiki );
+    settings.show_korean = $('#input_show_korean').is(":checked");
+    $("#input_show_korean").prop( "disabled", !settings.parce_shiki );
 
     settings.parce_files = $('#input_parce_files').is(":checked");
     settings.show_same_size_files = $('#input_show_same_size_files').is(":checked");
@@ -1532,6 +1555,12 @@ function update_ui_state() {
     $("#input_show_shiki_synonyms").prop( "disabled", !settings.parce_shiki );
     $("#input_show_anydb_synonyms").prop( "checked", settings.show_anydb_synonyms );
     $("#input_show_anydb_synonyms").prop( "disabled", !settings.parce_shiki );
+    $("#input_show_japanese").prop( "checked", settings.show_japanese );
+    $("#input_show_japanese").prop( "disabled", !settings.parce_shiki );
+    $("#input_show_chineese").prop( "checked", settings.show_chineese );
+    $("#input_show_chineese").prop( "disabled", !settings.parce_shiki );
+    $("#input_show_korean").prop( "checked", settings.show_korean );
+    $("#input_show_korean").prop( "disabled", !settings.parce_shiki );
 
     $("#input_parce_files").prop( "checked", settings.parce_files );
     $("#input_show_same_size_files").prop( "checked", settings.show_same_size_files );
