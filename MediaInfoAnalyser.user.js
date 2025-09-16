@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.24
+// @version      0.5.25
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -18,6 +18,7 @@ var media_info;
 var settings;
 
 var errors = [];
+var html_errors = [];
 var warnings = [];
 var size_warnings = [];
 
@@ -884,8 +885,10 @@ class Div {
 
     create_ui();
 
+    var spoilers = find_spoilers(post);
     image_processing(post);
-    process_mi(find_spoilers(post));
+    process_mi(spoilers);
+    screenshots_processing(spoilers);
 
     init_files_processing();
 
@@ -974,12 +977,61 @@ function image_processing(post){
             var longer = theImage.height > theImage.width ? theImage.height : theImage.width;
             var shorter = theImage.height <= theImage.width ? theImage.height : theImage.width;
             if (longer > 700 || shorter > 500){
-                $('#image_data').html("Некорректный размер изображения");
-                $('#image_data').show();
+                html_errors.push("Некорректный размер изображения");
+                update_ui_html_errors();
             }
         }
     }catch(e){
         console.error("Image processing error:", e);
+    }
+}
+async function screenshots_processing(spoilers){
+    try{
+        for (const spoiler of spoilers){
+            if (spoiler.toString().toLowerCase().includes("скриншоты") ||
+                spoiler.toString().toLowerCase().includes("screenshots")){
+                var screenshots_spoiler = spoiler.nodes[2].toString();
+            }
+        }
+
+        if (screenshots_spoiler == null){
+            html_errors.push("Скриншоты не найдены");
+            update_ui_html_errors();
+            return;
+        }
+
+        var images = screenshots_spoiler.match(/<var class=\"postImg\" .*?>/gm);
+        images = Array.from(images, (x) => x.replace("<var ", "").replace(/class=\".*?\"/g, "").replace("title=\"","").replace("src=\"","").replace("\">","").replaceAll("\"","").replaceAll(" ",""));
+
+        var links = screenshots_spoiler.match(/<a .*?>/gm);
+        links = Array.from(links, (x) => x.replace("<a href=\"", "").replace(/class=\".*?\"/g, "").replace("title=\"","").replace(">","").replaceAll("\"","").replaceAll(" ",""));
+
+        if (images.length > 20){
+            html_errors.push("Скриншотов слишком много");
+        }
+
+        for(let i = 0; i < links.length; i++){
+            if (links[i].includes("jpg") || links[i].includes("jpeg")){
+                html_errors.push("Вероятно, скриншоты сделаны в jpg");
+                break;
+            }
+        }
+
+        for(let i = 0; i < images.length; i++){
+            let img = await getMeta(images[i]);
+            var longer = img.height > img.width ? img.height : img.width;
+            if (longer > 300){
+                html_errors.push("Превью скриншотов слишком большие");
+                break;
+            }else if (longer < 150){
+                html_errors.push("Превью скриншотов слишком маленькие");
+                break;
+            }
+        }
+
+        update_ui_html_errors();
+    }catch(e){
+        console.error("Screenshots processing error:", e);
     }
 }
 function parse_title(){
@@ -1004,6 +1056,14 @@ function parse_title(){
     }
 
     return [type.trim(), year.trim(), release.trim()]
+}
+function getMeta(url) {
+    return new Promise((resolve, reject) => {
+        let img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject();
+        img.src = url;
+    });
 }
 
 // files processing
@@ -1379,7 +1439,7 @@ function create_ui(){
                     "<svg fill=\"#404040\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\">"+
                     "<g><path d=\"M19.79,16.72,11.06,1.61A1.19,1.19,0,0,0,9,1.61L.2,16.81C-.27,17.64.12,19,1.05,19H19C19.92,19,20.26,17.55,19.79,16.72ZM11,17H9V15h2Zm0-4H9L8.76,5h2.45Z\"/></g></svg>"}),
         $('<div>', {id: 'shiki_data', style: "margin-top: 10px; margin-bottom: 10px;", html: "Данные загружаются..."}),
-        $('<div>', {id: 'image_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; color: red; font-weight: bold; display: none;", html: ""}),
+        $('<div>', {id: 'html_errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; color: red; font-weight: bold; display: none;", html: ""}),
         $('<div>', {id: 'errors_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; max-height: 400px; overflow-y: auto;", html: "Данные загружаются..."}),
         $('<div>', {id: 'warnings_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080; max-height: 400px; overflow-y: auto;", html: "Данные загружаются..."}),
         $('<div>', {id: 'mi_data', style: "padding-top: 10px; margin-bottom: 10px; border-top: 1px solid #80808080;", html: "Данные загружаются..."}),
@@ -1465,6 +1525,16 @@ function update_ui_state() {
     $("#input_show_same_size_files").prop( "disabled", !settings.parce_files );
     $("#input_parce_files_on_completed").prop( "checked", settings.parce_files_on_completed );
     $("#input_parce_files_on_completed").prop( "disabled", !settings.parce_files );
+}
+function update_ui_html_errors(){
+    if (html_errors.length > 0){
+        $('#html_errors_data').show();
+        $('#html_errors_data').css("color", "red");
+        $('#html_errors_data').css("font-weight", "bold");
+        $('#html_errors_data').html(html_errors.join("<\/br>"));
+    }else{
+        $('#html_errors_data').hide();
+    }
 }
 function update_ui_errors(){
     var is_completed = check_torrent_status();
