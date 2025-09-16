@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.26
+// @version      0.5.27
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1577,7 +1577,6 @@ function update_ui_shiki(){
 
         $('#shiki_data').html(text);
         $('#import_title').on('change', import_titles);
-        $('#romaji').on('click', toggle_name_mark);
         $('#shiki_data').show();
     }else{
         $('#shiki_data').hide();
@@ -1586,24 +1585,6 @@ function update_ui_shiki(){
 function update_ui_mi(){
     media_info.recalculate_language_errors(anime.country);
     $('#mi_data').html(media_info.toString());
-}
-var name_marked = false;
-function toggle_name_mark() {
-    const bodyText = document.body.innerHTML;
-    console.log(name_marked);
-    if (name_marked){
-        document.body.innerHTML = bodyText.replace(
-            new RegExp(`<mark>${anime.name}</mark>`, "gi"),
-            match => match.slice(6, -7)
-        );
-    }else{
-        document.body.innerHTML = bodyText.replace(
-            new RegExp(anime.name, "gi"),
-            match => `<mark>${match}</mark>`
-        );
-    }
-    name_marked = !name_marked;
-    $('#romaji').on('click', toggle_name_mark);
 }
 
 // core web & data
