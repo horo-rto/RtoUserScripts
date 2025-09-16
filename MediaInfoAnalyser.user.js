@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.27
+// @version      0.5.28
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -758,7 +758,7 @@ class Anime {
         }else{
             out.push(this.russian);
         }
-        out.push("<b id=\"romaji\">" + this.name + "</b>");
+        out.push("<b id=\"romaji\" style=\"cursor: pointer;\">" + this.name + "</b>");
         out.push("");
         if (this.altr.length > 0){
             out.push(this.altr.join("<\/br>"));
@@ -1126,35 +1126,48 @@ class Folder{
     }
 
     calcOffset(parentObj){
-        this.cutFromStart = 0;
-        this.cutFromEnd = 0;
+        this.cutFromStart = null;
+        this.cutFromEnd = null;
 
-        if (this.files.length > 1){// && this.files[0].name.length == this.files[this.files.length-1].name.length) {
-            var is_same = true;
-            for (let i = 0; i < this.files[0].name.length; i++){
-                if (this.files[0].name.charAt(i) == this.files[this.files.length-1].name.charAt(i)){
-                    if (is_same){
-                        this.cutFromStart = i+1;
+        if (this.files.length > 1){
+
+            for (let j = 1; j < this.files.length; j++){
+                var localCutFromStart = 0;
+                var localCutFromEnd = 0;
+                var is_same = true;
+                for (let i = 0; i < this.files[0].name.length; i++){
+                    if (this.files[0].name.charAt(i) == this.files[j].name.charAt(i)){
+                        if (is_same){
+                            localCutFromStart = i+1;
+                        }
+                    }else{
+                        is_same = false;
                     }
-                }else{
-                    is_same = false;
                 }
-            }
 
-            is_same = true;
-            for (let i = 0; i < this.files[0].name.length; i++){
-                if (this.files[0].name.charAt(this.files[0].name.length - i) == this.files[this.files.length-1].name.charAt(this.files[this.files.length-1].name.length - i)){
-                    if (is_same){
-                        this.cutFromEnd = i;
+                is_same = true;
+                for (let i = 0; i < this.files[0].name.length; i++){
+                    if (this.files[0].name.charAt(this.files[0].name.length - i) == this.files[j].name.charAt(this.files[j].name.length - i)){
+                        if (is_same){
+                            localCutFromEnd = i;
+                        }
+                    }else{
+                        is_same = false;
                     }
-                }else{
-                    is_same = false;
+                }
+
+                if (localCutFromStart < this.cutFromStart || this.cutFromStart == null){
+                    this.cutFromStart = localCutFromStart;
+                }
+                if (localCutFromEnd < this.cutFromEnd || this.cutFromEnd == null){
+                    this.cutFromEnd = localCutFromEnd;
                 }
             }
         }else if(this.files.length == 1){
             this.cutFromStart = parentObj?.cutFromStart ?? 0;
             this.cutFromEnd = parentObj?.cutFromEnd ?? 0;
         }
+
 
         if (this.cutFromStart == 1) this.cutFromStart = 0;
         if (this.cutFromEnd == 1) this.cutFromEnd = 0;
@@ -1577,6 +1590,7 @@ function update_ui_shiki(){
 
         $('#shiki_data').html(text);
         $('#import_title').on('change', import_titles);
+        $('#romaji').on('click', () => navigator.clipboard.writeText(anime.name));
         $('#shiki_data').show();
     }else{
         $('#shiki_data').hide();
