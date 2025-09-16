@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.23
+// @version      0.5.24
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -268,6 +268,9 @@ class Video {
                 switch(line.split(" : ")[1]){
                     case "MPEG-4 Visual":
                         this.codec = "XviD";
+                        break;
+                    case "VC-1":
+                        this.codec = "WMV3";
                         break;
                     case "HEVC":
                         this.codec = "HEVC";
