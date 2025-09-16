@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.29
+// @version      0.5.30
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1048,7 +1048,8 @@ function parse_title(){
     let tags = document.title.match(/\[.*?\]/g);
 
     let lastTag = tags[tags.length-1];
-    if (lastTag == "[HD]"){
+    if (lastTag == "[Локализованный видеоряд]" ||
+        lastTag == "[HD]"){
         var ref = 3;
     }else if (lastTag == "[720p]" || lastTag == "[960p]" || lastTag == "[1080p]" || lastTag == "[2160p]" || lastTag == "[HWP]"){
         ref = 2;
@@ -1060,8 +1061,9 @@ function parse_title(){
 
     let year = split[0].slice(0, 4);
     let release = split[split.length - 1];
+
     let type = tags[0].slice(1, -1).toLowerCase();
-    if(type.includes("+")){
+    if (type.includes("+")){
         type = type.split("+")[0];
     }
 
