@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.30
+// @version      0.5.31
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -296,6 +296,9 @@ class Video {
                 this.height = line.split(" : ")[1].replaceAll(/\D/g, '');
             }else if (line.includes("Width") || line.includes("Ширина")){
                 this.width = line.split(" : ")[1].replaceAll(/\D/g, '');
+            }else if (line.includes("Display aspect ratio") || line.includes("Соотношение сторон")){
+                let raw = line.split(" : ")[1];
+                this.ar = raw.split(":")[0].replace(",", ".") / raw.split(":")[1].replace(",", ".");
             }else if (line.includes("FrameRate_Mode") || line.includes("Frame rate mode") || line.includes("Режим частоты кадров")){
                 if (line.includes("Variable") || line.includes("Переменный")){
                     this.vfr = 1;
@@ -384,7 +387,18 @@ class Video {
             line += " <span style=\"color: red; font-weight: bold;\">crf=" + Number(this.crf).toFixed(1) + "</span>";
         }
 
-        line += ", "+ this.width + "x" + this.height + " " + this.fps + "fps ";
+        line += ", "+ this.width + "x" + this.height;
+
+        if (Number.parseFloat(this.width / this.height).toFixed(2) != Number.parseFloat(this.ar).toFixed(2)) {
+            if (this.height*this.ar > this.width){
+                line += " @ " + Math.round(this.height*this.ar) + "x" + this.height + "";
+            }else{
+            line += " @ " + this.width + "x" + Math.round(this.width/this.ar) + "";
+            }
+
+        }
+
+        line += " " + this.fps + "fps ";
 
         if (this.vfr == 1) line += "(VFR) ";
 
