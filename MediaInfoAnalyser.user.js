@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.32
+// @version      0.5.33
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1005,6 +1005,12 @@ function image_processing(post){
             if (longer > 700 || shorter > 500){
                 html_errors.push("Некорректный размер изображения");
                 update_ui_html_errors();
+            }
+            if (images[i].includes(".png")){
+                if (longer * shorter > 200000){
+                    html_errors.push("<span style=\"color: #FF7900;\">Постер в png большого размера — проверьте вес<\span>");
+                    update_ui_html_errors();
+                }
             }
         }
     }catch(e){
