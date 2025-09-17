@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO mod extended search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.2
+// @version      0.1.3
 // @description  extended anime mod links!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ModExtendedSearch.user.js
@@ -35,6 +35,7 @@ for (var i = 0; i < tags.length; i++) {
     ul.appendChild(create_button("world-art", "http://www.world-art.ru/search.php?name=%s&global_sector=animation", text));
     ul.appendChild(create_button("shikimori", "https://shikimori.one/animes?search=%s", text));
     ul.appendChild(create_button("aniDB", "https://anidb.net/search/anime/?adb.search=%s", text));
+    ul.appendChild(create_button("nyaa.si", "https://nyaa.si/?f=0&c=1_0&q=%s", text));
 }
 
 })();
