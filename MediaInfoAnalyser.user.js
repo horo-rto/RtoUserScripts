@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.33
+// @version      0.5.34
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -729,7 +729,7 @@ class Anime {
         this.licenseNameRu = data.licenseNameRu;
         this.russian = data.russian;
 
-        this.directors = Array.from(data.personRoles.filter(x => x.rolesEn.includes("Director")), x => x.person.russian);
+        this.directors = Array.from(data.personRoles.filter(x => x.rolesEn.includes("Director")), x => (x.person.russian ?? x.person.name));
         this.studios = Array.from(data.studios, x => x.name);
 
         this.links = data.externalLinks.filter(x => x.kind != "shiki");
