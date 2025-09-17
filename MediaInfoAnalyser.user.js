@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.31
+// @version      0.5.32
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -123,7 +123,9 @@ class MediaInfo{
             for (var i = 2; i < reports.length; i++){
                 var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
                 for (const chunk_extra of chunks_extra) {
-                    if (chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")){
+                    if ((chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")) &&
+                        !chunk_extra.includes("Writing application") &&
+                        !chunk_extra.includes("Программа кодирования")){
                         this.extra.push(new Audio(chunk_extra, true));
                     }
                 }
@@ -554,7 +556,7 @@ class Audio {
         }
         line += (this.forced == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
 
-        if (media_info.video.size != -1 && media_info.video.size < this.size*3){
+        if (media_info.video.size != -1 && media_info.video.size < this.size*3 && !this.isExt){
             var sizeError = true;
         }
         if ((this.language == "Русский" || this.language == "Russian") && media_info.biggestOriginalBitrate != -1){
