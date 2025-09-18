@@ -395,7 +395,7 @@ class Video {
 
         line += ", "+ this.width + "x" + this.height;
 
-        if (((this.width / this.height) / this.ar) > 1.12 || ((this.width / this.height) / this.ar) < 0.88) {
+        if (((this.width / this.height) / this.ar) > 1.1 || ((this.width / this.height) / this.ar) < 0.9) {
             if (this.height*this.ar > this.width){
                 line += "<span style=\"opacity:0.58\">@" + Math.round(this.height*this.ar) + "x" + this.height + "</span>";
             }else{
