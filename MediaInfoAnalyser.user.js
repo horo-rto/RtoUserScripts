@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.34
+// @version      0.5.35
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -273,7 +273,7 @@ class Video {
         var lines = chunk.replaceAll('&nbsp;', ' ').replaceAll('\n', '').split("<br>");
         for (const line of lines) {
             if ((line.startsWith("Format ") && !line.includes("Format profile") && !line.includes("Format settings"))
-                || line.startsWith("Формат ") || line.startsWith("Format/String")){
+                || (line.startsWith("Формат ") && !line.includes("Формат HDR")) || line.startsWith("Format/String")){
                 switch(line.split(" : ")[1]){
                     case "MPEG-4 Visual":
                         this.codec = "XviD";
@@ -298,9 +298,13 @@ class Video {
                 this.height = line.split(" : ")[1].replaceAll(/\D/g, '');
             }else if (line.includes("Width") || line.includes("Ширина")){
                 this.width = line.split(" : ")[1].replaceAll(/\D/g, '');
-            }else if (line.includes("Display aspect ratio") || line.includes("Соотношение сторон")){
+            }else if (line.includes("Display aspect ratio") || (line.includes("Соотношение сторон") && !line.includes("Соотношение сторон в оригинале"))){
                 let raw = line.split(" : ")[1];
-                this.ar = raw.split(":")[0].replace(",", ".") / raw.split(":")[1].replace(",", ".");
+                if (raw.includes(":")){
+                    this.ar = raw.split(":")[0].replace(",", ".") / raw.split(":")[1].replace(",", ".");
+                }else{
+                    this.ar = raw.replace(",", ".");
+                }
             }else if (line.includes("FrameRate_Mode") || line.includes("Frame rate mode") || line.includes("Режим частоты кадров")){
                 if (line.includes("Variable") || line.includes("Переменный")){
                     this.vfr = 1;
@@ -391,13 +395,12 @@ class Video {
 
         line += ", "+ this.width + "x" + this.height;
 
-        if (Number.parseFloat(this.width / this.height).toFixed(2) != Number.parseFloat(this.ar).toFixed(2)) {
+        if (((this.width / this.height) / this.ar) > 1.12 || ((this.width / this.height) / this.ar) < 0.88) {
             if (this.height*this.ar > this.width){
-                line += " @ " + Math.round(this.height*this.ar) + "x" + this.height + "";
+                line += "<span style=\"opacity:0.58\">@" + Math.round(this.height*this.ar) + "x" + this.height + "</span>";
             }else{
-            line += " @ " + this.width + "x" + Math.round(this.width/this.ar) + "";
+                line += "<span style=\"opacity:0.58\">@" + this.width + "x" + Math.round(this.width/this.ar) + "</span>";
             }
-
         }
 
         line += " " + this.fps + "fps ";
@@ -615,7 +618,12 @@ class Audio {
         line += this.samplingrate + "kHz, ";
 
         if (this.delay != ""){
-            line += "<span style=\"color: red; font-weight: bold;\">" + this.delay + "</span> ";
+            let delayvalue = this.delay.replaceAll(/[a-zA-Zа-яА-Я-/. ]/g, '');
+            if (this.language == "Русский" || this.language == "Russian" || delayvalue > 100){
+                line += "<span style=\"color: red; font-weight: bold;\">" + this.delay.replaceAll(/[/. ]/g, '') + "</span>, ";
+            }else{
+                line += this.delay.replaceAll(/[/. ]/g, '') + ", ";
+            }
         }
 
         if (this.languageError == 1){
@@ -787,7 +795,7 @@ class Anime {
             out.push("");
         }
         out.push(this.year + ", " + this.country);
-        out.push(this.type + ", " + (this.episodes == 0 ? "?" : this.episodes) + " по " + this.duration + " мин");
+        out.push(this.type.toUpperCase().replace("MOVIE", "Movie").replace("SPECIAL", "Special") + ", " + (this.episodes == 0 ? "?" : this.episodes) + " по " + this.duration + " мин");
         out.push(this.genres.join(", "));
         out.push(this.directors.join(", "));
         out.push(this.studios.join(", "));
@@ -845,7 +853,7 @@ class Anime {
             this.altr = [(this.#src.licenseNameRu ? this.#src.russian : null), this.#src.name, this.#src.english, ...this.#src.synonyms];
         }
         if (settings.show_anydb_synonyms) {
-            let filtered = this.altr_anidb
+            let filtered = this.altr_anidb ?? [];
             if (!settings.show_japanese) filtered = filtered.filter(x => x["xml:lang"] != "ja");
             if (!settings.show_chineese) filtered = filtered.filter(x => x["xml:lang"] != "zh-Hans" && x["xml:lang"] != "zh-Hant");
             if (!settings.show_korean) filtered = filtered.filter(x => x["xml:lang"] != "ko");
