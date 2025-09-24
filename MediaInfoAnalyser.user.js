@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.35
+// @version      0.5.36
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -255,7 +255,7 @@ class General {
             }else if (line.includes("Overall bit rate") || line.includes("Общий битрейт") || line.includes("Общий поток")){
                 this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll("⠀", "").replaceAll(" ", "")
                     .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
-                    .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+                    .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","Mbps").replaceAll("мбит/c","Mbps").replaceAll("mb/s","Mbps");
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }
         }
@@ -315,7 +315,7 @@ class Video {
                 if (this.bitrate == -1){
                     this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll("⠀", "").replaceAll(" ", "")
                         .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
-                        .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+                        .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","Mbps").replaceAll("мбит/c","Mbps").replaceAll("mb/s","Mbps");
                     this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
                 }
             }else if (line.startsWith("FromStats_BitRate")){
@@ -323,7 +323,7 @@ class Video {
             }else if (line.startsWith("BitRate") || line.includes("Bit rate") || line.includes("Битрейт")){
                 this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll("⠀", "").replaceAll(" ", "")
                     .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
-                    .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+                    .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","Mbps").replaceAll("мбит/c","Mbps").replaceAll("mb/s","Mbps");
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }else if (line.includes("BitDepth") || line.includes("Bit depth") || line.includes("Битовая глубина")){
                 this.bit = line.split(" : ")[1].replaceAll(/\D/g, '');
@@ -493,7 +493,7 @@ class Audio {
             }else if (line.startsWith("BitRate") || line.includes("Bit rate") || line.includes("Битрейт")){
                 this.bitrate = line.split(" : ")[1].toLowerCase().replaceAll("⠀", "").replaceAll(" ", "")
                     .replaceAll("кбит/сек","kbps").replaceAll("кбит/с","kbps").replaceAll("кбит/c","kbps").replaceAll("kb/s","kbps")
-                    .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","kbps").replaceAll("мбит/c","kbps").replaceAll("mb/s","Mbps");
+                    .replaceAll("мбит/сек","Mbps").replaceAll("мбит/с","Mbps").replaceAll("мбит/c","Mbps").replaceAll("mb/s","Mbps");
                 this.bitrate = this.bitrate.replace(",0", "").replace(".0", "");
             }else if (line.includes("SamplingRate") || line.includes("Sampling rate") || line.includes("Частота дискретизации") || (line.includes("Частота") && !line.includes("Частота кадров"))){
                 this.samplingrate = line.split(" : ")[1].split(" ")[0].replace(",", ".");
