@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -106,7 +106,7 @@ class Topic{
     let count = $('#topmaintitle > .med.bold')[0].innerText.split(' ')[2];
     max_page = Math.ceil(count/50);
 
-    for (let i = 1; i < max_page; i++){
+    for (let i = 1; i < max_page && i < 10; i++){
         let addr = `https://rutracker.org/forum/${BB.PG_BASE_URL}&start=${i*50}`;
         console.log(addr);
         get_ajax(addr, 'GET', 'text/html; charset=Windows-1251', null, page_handler);
@@ -204,7 +204,7 @@ function parse_table(tablesorter){
 
     loaded++;
 
-    if (loaded == max_page){
+    if (loaded == max_page || loaded == 10){
         draw_authors();
         redraw();
     }
