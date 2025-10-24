@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.1
+// @version      0.1.2
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -159,6 +159,7 @@ function draw_authors() {
     var cached_settings = GM_getValue("extended_search_settings") ?? null;
 
     try {
+        console.log(cached_settings);
         var parsed = JSON.parse(cached_settings);
         for (const [key, value] of Object.entries(parsed)) {
             if (key in authors){
@@ -166,6 +167,7 @@ function draw_authors() {
             }
         }
     } catch (e) {
+        console.error(e);
     }
 
     GM_setValue("extended_search_settings", JSON.stringify(authors));
@@ -205,6 +207,8 @@ function parse_table(tablesorter){
     loaded++;
 
     if (loaded == max_page || loaded == 10){
+        obj_list = obj_list.sort((a, b) => b.date.precize - a.date.precize);
+
         draw_authors();
         redraw();
     }
