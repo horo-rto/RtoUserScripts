@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.2
+// @version      0.1.3
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -132,7 +132,7 @@ class Topic{
     // удалить блоки ссылок и автора
     $('.fieldsets')[0].children[0].children[1].children[0].children[0].remove();
 
-    let fieldset = $('<fieldset>', {id: 'author_fieldset', style: 'min-width: 200px; width: 200px;'}).appendTo($('.fieldsets')[0].children[0].children[0].children[2]);
+    let fieldset = $('<fieldset>', {id: 'author_fieldset', style: 'min-width: 200px; width: 200px; height: 317.8px;'}).appendTo($('.fieldsets')[0].children[0].children[0].children[2]);
     fieldset.append([
         $('<legend>', { html: "Фильтр по автору:" }),
         $('<div>', { class: 'gen', id: 'authors-div', style: 'overflow-y: auto; Max-height: 301px;' })
