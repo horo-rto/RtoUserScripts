@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.36
+// @version      0.5.37
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -103,7 +103,11 @@ class MediaInfo{
             reports = mi_spoiler.split("General<br>");
         }
 
-        var main = reports[reports.length > 1 ? 1 : 0];
+        for (const report of reports){
+            if (report.includes("Video") || report.includes("Видео")){
+                var main = report;
+            }
+        }
 
         var chunks = main.split("<span class=\"post-br\"><br></span>");
 
@@ -120,13 +124,15 @@ class MediaInfo{
         }
 
         if (reports.length > 2){
-            for (var i = 2; i < reports.length; i++){
-                var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
-                for (const chunk_extra of chunks_extra) {
-                    if ((chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")) &&
-                        !chunk_extra.includes("Writing application") &&
-                        !chunk_extra.includes("Программа кодирования")){
-                        this.extra.push(new Audio(chunk_extra, true));
+            for (var i = 1; i < reports.length; i++){
+                if (reports[i] != main) {
+                    var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
+                    for (const chunk_extra of chunks_extra) {
+                        if ((chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")) &&
+                            !chunk_extra.includes("Writing application") &&
+                            !chunk_extra.includes("Программа кодирования")){
+                            this.extra.push(new Audio(chunk_extra, true));
+                        }
                     }
                 }
             }
@@ -341,7 +347,7 @@ class Video {
                 this.percentage = newline[1].slice(0,-2);
             }else if (line.includes("Language") || line.includes("Язык")){
                 this.language = line.split(" : ")[1];
-            }else if (line.includes("Default") || line.includes("По умолчанию") || line.includes("Дорожка по умолчанию")){
+            }else if (line.includes("Default") || line.includes("По умолчанию") || line.includes("Дорожка по умолчанию") || line.includes("Дорожка по умолчанию")){
                 if (line.split(" : ")[1] == "Да" || line.split(" : ")[1] == "Yes"){
                     this.default = 1;
                 }else{
@@ -532,7 +538,7 @@ class Audio {
                             break;
                     }
                 }
-            }else if (line.includes("Default") || line.includes("По умолчанию")){
+            }else if (line.includes("Default") || line.includes("По умолчанию") || line.includes("Дорожка по умолчанию")){
                 if (line.split(" : ")[1] == "Да" || line.split(" : ")[1] == "Yes"){
                     this.default = 1;
                 }else{
@@ -673,7 +679,7 @@ class Text {
                         if (media_info.isOriginal) this.languageError = 1;
                         break;
                 }
-            }else if (line.includes("Default") || line.includes("По умолчанию")){
+            }else if (line.includes("Default") || line.includes("По умолчанию") || line.includes("Дорожка по умолчанию")){
                 if (line.split(" : ")[1] == "Да" || line.split(" : ")[1] == "Yes"){
                     this.default = 1;
                 }else{
@@ -911,7 +917,6 @@ class Div {
 (function() {
     console.log("RTO Release Assistant");
     if (window.location.href.match(/start=\d+/) != null) return;
-    if (check_torrent_status() == null) return;
 
     settings = new Settings();
 
@@ -951,7 +956,12 @@ function find_shiki_id(post){
 }
 function find_spoilers(post){
     let div = create_html_structure(post);
-    return div.getNodesArray().filter(x => x.getCurrentDepthText().startsWith("<div class=\"sp-wrap\">"));
+    if (div.getNodesArray()[0].getCurrentDepthText().startsWith("<div class=\"post-box-center\">")){
+        console.log("Мультивложенные боксы.")
+        return null;
+    }else{
+        return div.getNodesArray().filter(x => x.getCurrentDepthText().startsWith("<div class=\"sp-wrap\">"));
+    }
 }
 function create_html_structure(post){
     let data = [];
@@ -1002,18 +1012,49 @@ function process_mi(spoilers){
 }
 function image_processing(post){
     try{
-        var images = post.innerHTML.match(/<img .*?>/gm).filter(x => x.includes("postImg"));
+        window.setTimeout(function () {
+            var images = post.innerHTML.match(/<img .*?>/gm);
+            if (images == undefined || images.length == 0){
+                window.setTimeout(function () {
+                    var images = post.innerHTML.match(/<img .*?>/gm).filter(x => x.includes("postImg"));
+                    image_processing_inner(images);
+                }, 800)
+            }else{
+                images = images.filter(x => x.includes("postImg"));
+                image_processing_inner(images);
+            }
+        }, 200)
+    }catch(e){
+        console.error("Image processing error:", e);
+    }
+}
+function image_processing_inner(images){
+    try{
         var regex = /class=\".*?\" /g;
         images = Array.from(images, (x) => x.replace("<img ","").replace(regex,"").replace("alt=\"pic\" ","").replace("src=\"","").replace("\">",""));
+        var imageLog = [];
+
         for(var i = 0; i < images.length; i++){
             var theImage = new Image();
-            theImage.src = images[i];
+            theImage.src = images[i].replace("?r=1", "");
             var longer = theImage.height > theImage.width ? theImage.height : theImage.width;
             var shorter = theImage.height <= theImage.width ? theImage.height : theImage.width;
+
+            imageLog.push([theImage.src, longer, shorter]);
+
             if (longer > 700 || shorter > 500){
                 html_errors.push("Некорректный размер изображения");
                 update_ui_html_errors();
             }
+
+            if (longer == 0 && shorter == 0){
+                let err00 = "<span style=\"color: #FF7900;\">Постер не успел загрузиться<\span>";
+                if (!html_errors.includes(err00)){
+                    html_errors.push(err00);
+                    update_ui_html_errors();
+                }
+            }
+
             if (images[i].includes(".png")){
                 if (longer * shorter > 200000){
                     html_errors.push("<span style=\"color: #FF7900;\">Постер в png большого размера — проверьте вес<\span>");
@@ -1021,6 +1062,7 @@ function image_processing(post){
                 }
             }
         }
+        console.log(imageLog)
     }catch(e){
         console.error("Image processing error:", e);
     }
@@ -1226,6 +1268,11 @@ class Folder{
 function init_files_processing(){
     try{
         var is_completed = check_torrent_status();
+        if (is_completed == null) {
+            update_ui_errors();
+            return;
+        }
+
         if (settings.parce_files && (settings.parce_files_on_completed || !is_completed)){
             var topic_id = window.location.href.match(/\d+/)[0];
             get_ajax("https://rutracker.org/forum/viewtorrent.php", 'POST',
