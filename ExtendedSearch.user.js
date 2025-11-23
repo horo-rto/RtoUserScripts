@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.5
+// @version      0.1.6
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -218,11 +218,14 @@ function redraw() {
     const tB = document.createElement("tbody");
     tablesorter.tBodies[0].remove();
     tablesorter.append(tB);
+    let count = 0;
     for (const element of obj_list){
         if (authors[element.author.id].checked){
             tB.append(element.draw());
+            count++;
         }
     }
+    $('#main_content_wrap > table > tbody > tr > td > .med.bold')[0].innerHTML = "Результатов поиска: " + count + " <span class='normal'>(из " + obj_list.length + ")</span>";
 }
 
 function parse_table(tablesorter){
