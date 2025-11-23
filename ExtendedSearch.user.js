@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.4
+// @version      0.1.5
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -138,11 +138,35 @@ class Topic{
     let fieldset = $('<fieldset>', {id: 'author_fieldset', style: 'min-width: 200px; width: 200px; height: 317.8px; scrollbar-color: #888 transparent;'}).appendTo($('.fieldsets')[0].children[0].children[0].children[2]);
     fieldset.append([
         $('<legend>', { html: "Фильтр по автору:" }),
-        $('<div>', { class: 'gen', id: 'authors-div', style: 'overflow-y: auto; Max-height: 301px;' })
+        $('<div>', { class: 'gen', id: 'authors-div', style: 'overflow-y: auto; height: 267px;' }),
+        $('<div>', { class: 'gen', }).append([
+            $('<input>', { class: 'bold', type: 'submit', style: 'width: 89px;', value: 'Все', click: select_all }),
+            $('<input>', { class: 'bold', type: 'submit', style: 'width: 90px;', value: 'Никто', click: select_none }),
+        ])
     ]);
 
     parse_table($('.tablesorter')[0]);
 })();
+
+function select_all(){
+    event.preventDefault()
+    for (const [key, value] of Object.entries(authors)) {
+        authors[key].checked = true;
+        $('#author'+key).prop( "checked", true );
+    }
+    GM_setValue("extended_search_settings", JSON.stringify(authors));
+    redraw();
+}
+
+function select_none(){
+    event.preventDefault()
+    for (const [key, value] of Object.entries(authors)) {
+        authors[key].checked = false;
+        $('#author'+key).prop( "checked", false );
+    }
+    GM_setValue("extended_search_settings", JSON.stringify(authors));
+    redraw();
+}
 
 function update_authors(){
     for (const [key, value] of Object.entries(authors)) {
