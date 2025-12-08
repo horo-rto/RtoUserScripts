@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.6
+// @version      0.1.7
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -140,8 +140,8 @@ class Topic{
         $('<legend>', { html: "Фильтр по автору:" }),
         $('<div>', { class: 'gen', id: 'authors-div', style: 'overflow-y: auto; height: 267px;' }),
         $('<div>', { class: 'gen', }).append([
-            $('<input>', { class: 'bold', type: 'submit', style: 'width: 89px;', value: 'Все', click: select_all }),
-            $('<input>', { class: 'bold', type: 'submit', style: 'width: 90px;', value: 'Никто', click: select_none }),
+            $('<input>', { class: 'bold', type: 'button', style: 'width: 89px;', value: 'Все', click: select_all }),
+            $('<input>', { class: 'bold', type: 'button', style: 'width: 90px;', value: 'Никто', click: select_none }),
         ])
     ]);
 
@@ -149,7 +149,6 @@ class Topic{
 })();
 
 function select_all(){
-    event.preventDefault()
     for (const [key, value] of Object.entries(authors)) {
         authors[key].checked = true;
         $('#author'+key).prop( "checked", true );
@@ -159,7 +158,6 @@ function select_all(){
 }
 
 function select_none(){
-    event.preventDefault()
     for (const [key, value] of Object.entries(authors)) {
         authors[key].checked = false;
         $('#author'+key).prop( "checked", false );
