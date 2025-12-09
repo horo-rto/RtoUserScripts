@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.37
+// @version      0.5.38
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -957,8 +957,8 @@ function find_shiki_id(post){
 function find_spoilers(post){
     let div = create_html_structure(post);
     if (div.getNodesArray()[0].getCurrentDepthText().startsWith("<div class=\"post-box-center\">")){
-        console.log("Мультивложенные боксы.")
-        return null;
+        console.log("Мультивложенные боксы, могут быть ошибки.")
+        return div.nodes[0].nodes[1].nodes[1].nodes[1].getNodesArray().filter(x => x.getCurrentDepthText().startsWith("<div class=\"sp-wrap\">"));
     }else{
         return div.getNodesArray().filter(x => x.getCurrentDepthText().startsWith("<div class=\"sp-wrap\">"));
     }
