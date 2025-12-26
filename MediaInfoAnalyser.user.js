@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.38
+// @version      0.5.39
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -79,7 +79,6 @@ class MediaInfo{
 
     constructor() {
         this.isRussian = true;
-        this.isOriginal = false;
 
         this.biggestOriginalBitrate = -1;
 
@@ -202,8 +201,6 @@ class MediaInfo{
         this.detect_original_sound_bitrate(lng1, lng2);
 
         this.isRussian = true;
-        this.isOriginal = false;
-
         for (let audio of this.audio) {
             audio.languageError = 0;
 
@@ -214,21 +211,14 @@ class MediaInfo{
                     case "Russian":
                         if (!media_info.isRussian) audio.languageError = 1;
                         break;
-                    case lng1:
-                    case lng2:
-                        media_info.isRussian = false;
-                        media_info.isOriginal = true;
-                        break;
                     default:
                         media_info.isRussian = false;
-                        if (media_info.isOriginal) audio.languageError = 1;
                         break;
                 }
             }
         }
 
         this.isRussian = true;
-        this.isOriginal = false;
 
         for (let subtl of this.subtl) {
             subtl.languageError = 0;
@@ -239,14 +229,8 @@ class MediaInfo{
                 case "Russian":
                     if (!media_info.isRussian) subtl.languageError = 1;
                     break;
-                    case lng1:
-                    case lng2:
-                    media_info.isRussian = false;
-                    media_info.isOriginal = true;
-                    break;
                 default:
                     media_info.isRussian = false;
-                    if (media_info.isOriginal) subtl.languageError = 1;
                     break;
             }
         }
@@ -453,7 +437,6 @@ class Audio {
                 line.replaceAll(/<.*?>/g, "") == "Аудио"){
                 this.isfirst = 1;
                 media_info.isRussian = true;
-                media_info.isOriginal = false;
             }else if (line.startsWith("Title") || line.startsWith("Заголовок")){
                 this.title = line.split(" : ")[1];
             }else if ((line.startsWith("Format ") &&
@@ -527,14 +510,8 @@ class Audio {
                         case "Russian":
                             if (!media_info.isRussian) this.languageError = 1;
                             break;
-                        case "Японский":
-                        case "Japanese":
-                            media_info.isRussian = false;
-                            media_info.isOriginal = true;
-                            break;
                         default:
                             media_info.isRussian = false;
-                            if (media_info.isOriginal) this.languageError = 1;
                             break;
                     }
                 }
@@ -653,7 +630,6 @@ class Text {
                 line.replaceAll(/<.*?>/g, "") == "Текст"){
                 this.isfirst = 1;
                 media_info.isRussian = true;
-                media_info.isOriginal = false;
             }else if (line.startsWith("Title") || line.startsWith("Заголовок")){
                 this.title = line.split(" : ")[1];
             }else if (line.startsWith("Format/String") || line.startsWith("Format ") || line.startsWith("Формат ")){
@@ -669,14 +645,8 @@ class Text {
                     case "Russian":
                         if (!media_info.isRussian) this.languageError = 1;
                         break;
-                    case "Японский":
-                    case "Japanese":
-                        media_info.isRussian = false;
-                        media_info.isOriginal = true;
-                        break;
                     default:
                         media_info.isRussian = false;
-                        if (media_info.isOriginal) this.languageError = 1;
                         break;
                 }
             }else if (line.includes("Default") || line.includes("По умолчанию") || line.includes("Дорожка по умолчанию")){
