@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Extended Search
 // @namespace    http://tampermonkey.net/
-// @version      0.1.7
+// @version      0.1.8
 // @description  extended search settings
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ExtendedSearch.user.js
@@ -223,6 +223,11 @@ function redraw() {
             count++;
         }
     }
+
+    if (BB) {
+        BB.hl_text_in_brackets()
+    }
+
     $('#main_content_wrap > table > tbody > tr > td > .med.bold')[0].innerHTML = "Результатов поиска: " + count + " <span class='normal'>(из " + obj_list.length + ")</span>";
 }
 
