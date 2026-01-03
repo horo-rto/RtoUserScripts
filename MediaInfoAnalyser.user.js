@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.39
+// @version      0.5.40
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -41,6 +41,7 @@ class Settings{
             this.show_same_size_files = parsed.show_same_size_files ?? this.#default.show_same_size_files;
             this.parce_files_on_completed = parsed.parce_files_on_completed ?? this.#default.parce_files_on_completed;
             this.parce_shiki = parsed.parce_shiki ?? this.#default.parce_shiki;
+            this.show_airing = parsed.show_airing ?? this.#default.show_airing;
             this.show_shiki_synonyms = parsed.show_shiki_synonyms ?? this.#default.show_shiki_synonyms;
             this.show_anydb_synonyms = parsed.show_anydb_synonyms ?? this.#default.show_anydb_synonyms;
             this.show_japanese = parsed.show_japanese ?? this.#default.show_japanese;
@@ -62,6 +63,7 @@ class Settings{
         show_same_size_files: true,
         parce_files_on_completed: true,
         parce_shiki : true,
+        show_airing : true,
         show_shiki_synonyms: true,
         show_anydb_synonyms: true,
         show_japanese: false,
@@ -704,6 +706,8 @@ class Anime {
 
         this.id = data.id;
         this.year = data.airedOn.year;
+        this.airedOn = data.airedOn.date;
+        this.releasedOn = data.releasedOn.date;
         this.type = data.kind;
         this.episodes = data.episodes;
         this.duration = data.duration;
@@ -770,7 +774,7 @@ class Anime {
             out.push(this.altr.join("<\/br>"));
             out.push("");
         }
-        out.push(this.year + ", " + this.country);
+        out.push(this.year + ", " + this.country + (settings.show_airing ? (" <span style=\"color:gray;\">(" + this.airedOn + (this.episodes != 1 ? (" - " + (this.releasedOn ?? "...")) : "") + ")</span>") : ""));
         out.push(this.type.toUpperCase().replace("MOVIE", "Movie").replace("SPECIAL", "Special") + ", " + (this.episodes == 0 ? "?" : this.episodes) + " по " + this.duration + " мин");
         out.push(this.genres.join(", "));
         out.push(this.directors.join(", "));
@@ -1423,7 +1427,7 @@ function send_ajax_shiki(id){
     // https://shikimori.one/api/doc/graphql
 
     var graphqlQuery = "{ \"query\": \"{ animes(ids: \\\"" + id + "\\\", limit: 1, censored: false) { " +
-        "id malId airedOn { year } rating score kind episodes episodesAired duration status " +
+        "id malId airedOn { year date } releasedOn { date } rating score kind episodes episodesAired duration status " +
         "licenseNameRu name russian japanese english synonyms " +
         "genres { russian kind } " +
         "studios { name } " +
@@ -1533,6 +1537,9 @@ function create_ui(){
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_parce_shiki' }),
                 $( '<label>', { html: 'Запрашивать информацию из API Shikimori (требует дополнительный запрос к API)', style: 'margin-left: 2px;', for: 'input_parce_shiki' }),
                 $('<br>'),
+                $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_show_airing' }),
+                $( '<label>', { html: 'Отображать даты трансляции', style: 'margin-left: 2px;', for: 'input_show_airing' }),
+                $('<br>'),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px;', click: update_settings, id: 'input_show_shiki_synonyms' }),
                 $( '<label>', { html: 'Отображать синонимы с Shikimori', style: 'margin-left: 2px;', for: 'input_show_shiki_synonyms' }),
                 $( '<input>', { type: 'checkbox', style: 'margin-top: -1px; margin-left: 20px;', click: update_settings, id: 'input_show_anydb_synonyms' }),
@@ -1568,6 +1575,8 @@ function toggle() {
 }
 function update_settings(){
     settings.parce_shiki = $('#input_parce_shiki').is(":checked");
+    settings.show_airing = $('#input_show_airing').is(":checked");
+    $("#input_show_airing").prop( "disabled", !settings.parce_shiki );
     settings.show_shiki_synonyms = $('#input_show_shiki_synonyms').is(":checked");
     $("#input_show_shiki_synonyms").prop( "disabled", !settings.parce_shiki );
     settings.show_anydb_synonyms = $('#input_show_anydb_synonyms').is(":checked");
@@ -1600,6 +1609,8 @@ function update_ui_state() {
     $('#assist_box_arrow_left')[0].style.display = settings.display ? "none" : "block";
 
     $("#input_parce_shiki").prop( "checked", settings.parce_shiki );
+    $("#input_show_airing").prop( "checked", settings.show_airing );
+    $("#input_show_airing").prop( "disabled", !settings.parce_shiki );
     $("#input_show_shiki_synonyms").prop( "checked", settings.show_shiki_synonyms );
     $("#input_show_shiki_synonyms").prop( "disabled", !settings.parce_shiki );
     $("#input_show_anydb_synonyms").prop( "checked", settings.show_anydb_synonyms );
