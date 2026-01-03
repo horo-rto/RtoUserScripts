@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.40
+// @version      0.5.41
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -104,36 +104,39 @@ class MediaInfo{
             reports = mi_spoiler.split("General<br>");
         }
 
-        for (const report of reports){
-            if (report.includes("Video") || report.includes("Видео")){
-                var main = report;
+        var mainId = -1;
+        for (let i = 1; i < reports.length; i++){
+            if (reports[i].includes("Video") || reports[i].includes("Видео")){
+                var main = reports[i];
             }
         }
 
-        var chunks = main.split("<span class=\"post-br\"><br></span>");
+        if (main){
+            var chunks = main.split("<span class=\"post-br\"><br></span>");
 
-        for (const chunk of chunks) {
-            if (chunk.includes("File size") || chunk.includes("Размер файла")){
-                this.genrl = new General(chunk);
-            } else if (chunk.includes("Text") || chunk.includes("Текст")){
-                this.subtl.push(new Text(chunk));
-            } else if (chunk.includes("Audio") || chunk.includes("Аудио")){
-                this.audio.push(new Audio(chunk));
-            } else if (chunk.includes("Video") || chunk.includes("Видео")){
-                this.video = new Video(chunk);
+            for (const chunk of chunks) {
+                if (chunk.includes("File size") || chunk.includes("Размер файла")){
+                    this.genrl = new General(chunk);
+                } else if (chunk.includes("Text") || chunk.includes("Текст")){
+                    this.subtl.push(new Text(chunk));
+                } else if (chunk.includes("Audio") || chunk.includes("Аудио")){
+                    this.audio.push(new Audio(chunk));
+                } else if (chunk.includes("Video") || chunk.includes("Видео")){
+                    this.video = new Video(chunk);
+                }
             }
         }
 
-        if (reports.length > 2){
-            for (var i = 1; i < reports.length; i++){
-                if (reports[i] != main) {
-                    var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
-                    for (const chunk_extra of chunks_extra) {
-                        if ((chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")) &&
-                            !chunk_extra.includes("Writing application") &&
-                            !chunk_extra.includes("Программа кодирования")){
-                            this.extra.push(new Audio(chunk_extra, true));
-                        }
+        for (let i = 1; i < reports.length; i++){
+            if (i != mainId) {
+                var chunks_extra = reports[i].split("<span class=\"post-br\"><br></span>");
+                for (const chunk_extra of chunks_extra) {
+                    if ((chunk_extra.includes("Audio") || chunk_extra.includes("Аудио")) &&
+                        !chunk_extra.includes("Complete name") &&
+                        !chunk_extra.includes("Полное имя") &&
+                        !chunk_extra.includes("Writing application") &&
+                        !chunk_extra.includes("Программа кодирования")){
+                        this.extra.push(new Audio(chunk_extra, true));
                     }
                 }
             }
@@ -150,11 +153,11 @@ class MediaInfo{
         var out = [];
 
         var err = this.audio.filter(x => x.bitrate == -1);
-        if ((err.length > 0 || this.video.bitrate == -1) && this.genrl != null) {
+        if ((err.length > 0 || this.video?.bitrate == -1) && this.genrl != null) {
             out.push(this.genrl.toString());
             out.push("<hr>");
         }
-        out.push(this.video.toString());
+        out.push(this.video?.toString());
         out.push("<hr>");
         out.push(Array.from(this.audio, x => x.toString()).join("<\/br>"));
         if (this.subtl.length > 0){
@@ -544,7 +547,7 @@ class Audio {
         }
         line += (this.forced == 1 ? "<span style=\"color: red; font-weight: bold;\">[x]</span>" : "[ ]" );
 
-        if (media_info.video.size != -1 && media_info.video.size < this.size*3 && !this.isExt){
+        if (media_info.video?.size != -1 && media_info.video?.size < this.size*3 && !this.isExt){
             var sizeError = true;
         }
         if ((this.language == "Русский" || this.language == "Russian") && media_info.biggestOriginalBitrate != -1){
@@ -910,6 +913,11 @@ class Div {
 
 // topic html parsing
 
+function get_forum_id(){
+    var link = $('.t-breadcrumb-top > a')[2];
+    if (link == null) return null;
+    return link.href.split("=")[1];
+}
 function check_torrent_status(){
     var status = $('#tor-status-resp > .tor-icon')[0];
     if (status == null) return null;
@@ -1042,6 +1050,12 @@ function image_processing_inner(images){
     }
 }
 async function screenshots_processing(spoilers){
+    var forum_id = get_forum_id();
+    if ([1385, 705, 599, 809, 2484, 1386, 535].includes(Number(forum_id))) {
+        update_ui_errors();
+        return;
+    }
+
     try{
         for (const spoiler of spoilers){
             if (spoiler.toString().toLowerCase().includes("скриншоты") ||
@@ -1241,6 +1255,12 @@ class Folder{
 }
 function init_files_processing(){
     try{
+        var forum_id = get_forum_id();
+        if ([1385, 705, 599, 809, 2484, 1386, 535].includes(Number(forum_id))) {
+            update_ui_errors();
+            return;
+        }
+
         var is_completed = check_torrent_status();
         if (is_completed == null) {
             update_ui_errors();
