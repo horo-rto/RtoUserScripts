@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.42
+// @version      0.5.43
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -622,6 +622,63 @@ class Audio {
         }
 
         if (this.title != "") line += ", " +this.title;
+
+        if (this.language != "Russian" && this.language != "Русский"){
+            let src = "";
+            switch (this.codec) {
+                case "EAC3":
+                    switch (this.channels) {
+                        case "2":
+                            switch (this.bitrate) {
+                                case "224kbps":
+                                    src = "AMZN";
+                                    break;
+                            }
+                            break;
+                        case "6":
+                            switch (this.bitrate){
+                                case "256kbps":
+                                    src = "Hulu/DSNP";
+                                    break;
+                                case "640kbps":
+                                    src = "AMZN/NF/U-NEXT";
+                                    break;
+                                case "768kbps":
+                                    src = "NF";
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case "AAC":
+                    switch (this.bitrate){
+                        case "64kbps":
+                            src = "Hulu";
+                            break;
+                        case "125kbps":
+                            src = "DSNP/U-NEXT";
+                            break;
+                        case "128kbps":
+                            if (this.samplingrate == "44.1") {
+                                src = "CR";
+                            }else{
+                                src = "NF";
+                            }
+                            break;
+                        case "160kbps":
+                            src = "ADN";
+                            break;
+                        case "192kbps":
+                            src = "CR";
+                            break;
+                        case "265kbps":
+                            src = "ADN";
+                            break;
+                    }
+                    break;
+            }
+            if (src != "") line += " <span style=\"color:gray;\">" + src + "</span>";
+        }
 
         return line;
     }
