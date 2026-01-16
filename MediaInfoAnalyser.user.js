@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.44
+// @version      0.5.45
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -294,7 +294,7 @@ class Video {
                 this.height = line.split(" : ")[1].replaceAll(/\D/g, '');
             }else if (line.includes("Width") || line.includes("Ширина")){
                 this.width = line.split(" : ")[1].replaceAll(/\D/g, '');
-            }else if (line.includes("Display aspect ratio") || (line.includes("Соотношение сторон") && !line.includes("Соотношение сторон в оригинале"))){
+            }else if (line.includes("Display aspect ratio") || (line.includes("Соотношение сторон") && !line.includes("оригинал"))){
                 let raw = line.split(" : ")[1];
                 if (raw.includes(":")){
                     this.ar = raw.split(":")[0].replace(",", ".") / raw.split(":")[1].replace(",", ".");
@@ -391,7 +391,7 @@ class Video {
 
         line += ", "+ this.width + "x" + this.height;
 
-        if (((this.width / this.height) / this.ar) > 1.1 || ((this.width / this.height) / this.ar) < 0.9) {
+        if (((this.width / this.height) / this.ar) > 1.05 || ((this.width / this.height) / this.ar) < 0.95) {
             if (this.height*this.ar > this.width){
                 line += "<span style=\"opacity:0.58\">@" + Math.round(this.height*this.ar) + "x" + this.height + "</span>";
             }else{
