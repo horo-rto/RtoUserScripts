@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         RTO title database search
+// @name         RTO title header links to databases
 // @namespace    http://tampermonkey.net/
-// @version      0.1.5
+// @version      0.1.7
 // @description  extended anime mod links!
 // @author       Horo
-// @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/ModExtendedSearch.user.js
+// @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/TitleHeaderLinksToDB.user.js
 // @match        https://rutracker.org/forum/viewtopic.php?t=*
 // @match        https://rutracker.net/forum/viewtopic.php?t=*
 // @match        https://rutracker.org/forum/viewtopic.php?p=*
@@ -20,7 +20,7 @@
     function create_button(name, url, text) {
         var button = $("<li>").append(name);
         var replacedUrl = url.replace('%s', text);
-        button.wrapInner("<a href='"+replacedUrl+"'>");
+        button.wrapInner("<a href='"+replacedUrl+"' target='_blank'>");
         return button[0];
     }
 
@@ -43,7 +43,9 @@
             ul.appendChild(create_button("shikimori", "https://shikimori.one/animes?search=%s", text));
             ul.appendChild(create_button("aniDB", "https://anidb.net/search/anime/?adb.search=%s", text));
             ul.appendChild(create_button("MAL", "https://myanimelist.net/anime.php?cat=anime&q=%s", text));
+            ul.appendChild(create_button("<hr>", "", text));
             ul.appendChild(create_button("nyaa.si", "https://nyaa.si/?f=0&c=1_0&q=%s", text));
+            ul.appendChild(create_button("blu-ray.com", "https://www.blu-ray.com/search/?quicksearch=1&quicksearch_country=all&quicksearch_keyword=%s&section=bluraymovies", text));
         }
     }
 
