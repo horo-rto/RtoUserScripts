@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.45
+// @version      0.5.46
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -98,11 +98,17 @@ class MediaInfo{
 
         //console.log(mi_spoiler.replaceAll("<br>", "\n"));
 
-        if(mi_spoiler.includes("Общее")){
-            var reports = mi_spoiler.split("Общее<br>");
+        if(mi_spoiler.includes("Общее") || mi_spoiler.includes("General")){
+            if(mi_spoiler.includes("Общее")){
+                var reports = mi_spoiler.split("Общее<br>");
+            }else{
+                reports = mi_spoiler.split("General<br>");
+            }
         }else{
-            reports = mi_spoiler.split("General<br>");
+            reports = mi_spoiler.split("<div class=\"sp-wrap\"><div class=\"sp-head folded\">");
         }
+
+        //console.log(reports);
 
         var mainId = -1;
         for (let i = 1; i < reports.length; i++){
@@ -539,7 +545,9 @@ class Audio {
 
     toString() {
         var line = "";
-        if (this.default == 1 && this.isfirst != 1){
+        if (this.isExt){
+            line += (this.default == 1 ? "[x]" : "[ ]" );
+        }else if (this.default == 1 && this.isfirst != 1){
             line += "<span style=\"color: red; font-weight: bold;\">[x]</span>";
         }else if (this.default != 1 && this.isfirst == 1){
             line += "<span style=\"color: red; font-weight: bold;\">[?]</span>";
