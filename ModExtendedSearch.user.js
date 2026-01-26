@@ -11,7 +11,7 @@
 // @match        https://rutracker.net/forum/viewtopic.php?p=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=rutracker.org
 // @grant        none
-// ==/UserScript==
+// ==/UserScript== 
 
 (function() {
     console.log("RTO title database search")
