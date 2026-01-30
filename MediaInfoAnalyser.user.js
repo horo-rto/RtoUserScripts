@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.46
+// @version      0.5.47
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -111,7 +111,7 @@ class MediaInfo{
         //console.log(reports);
 
         var mainId = -1;
-        for (let i = 1; i < reports.length; i++){
+        for (let i = 0; i < reports.length; i++){
             if (reports[i].includes("Video") || reports[i].includes("Видео")){
                 var main = reports[i];
                 mainId = i;
