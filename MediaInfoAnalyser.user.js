@@ -616,10 +616,10 @@ class Audio {
 
         if (this.delay != ""){
             let delayvalue = this.delay.replaceAll(/[a-zA-Zа-яА-Я-/. ]/g, '');
-            if (this.language == "Русский" || this.language == "Russian" || delayvalue > 100){
-                line += "<span style=\"color: red; font-weight: bold;\">" + this.delay.replaceAll(/[/. ]/g, '') + "</span>, ";
-            }else{
+            if ((this.language == "Японский" || this.language == "Japanese" || this.language == "Китайский" || this.language == "Chinese" || this.language == "Корейский" || this.language == "Korean") && delayvalue < 100){
                 line += this.delay.replaceAll(/[/. ]/g, '') + ", ";
+            }else{
+                line += "<span style=\"color: red; font-weight: bold;\">" + this.delay.replaceAll(/[/. ]/g, '') + "</span>, ";
             }
         }
 
