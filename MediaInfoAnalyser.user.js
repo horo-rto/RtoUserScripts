@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.48
+// @version      0.5.49
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1476,7 +1476,7 @@ function load_shiki(id){
             $('#shiki_data').html("Идентификатор не найден, пробуем поиск...");
             $('#shiki_untrusted').show();
             var names = document.title.match(/.*?\[/)[0].slice(0, -1).split("/");
-            var romadji = names[1].trim();
+            var romadji = names[1].trim().replaceAll("\"", "");
             var graphqlQuery = "{ \"query\": \"  { animes(search: \\\"" + romadji + "\\\", limit: 20, censored: false) { id  malId name airedOn { year } kind } } \"}";
             get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, search_handler);
         }
