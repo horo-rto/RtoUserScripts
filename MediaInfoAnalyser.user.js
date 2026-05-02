@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.49
+// @version      0.5.50
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -1523,7 +1523,7 @@ function send_ajax_shiki(id){
         "licensors fansubbers fandubbers " +
         "} }\"}";
 
-    get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, shiki_handler);
+    get_ajax("https://shikimori.io/api/graphql", 'POST', 'application/json', graphqlQuery, shiki_handler);
 }
 function shiki_handler() {
     if (this.status >= 400) {
