@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.50
+// @version      0.5.51
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -790,7 +790,7 @@ class Anime {
         this.studios = Array.from(data.studios, x => x.name);
 
         this.links = data.externalLinks.filter(x => x.kind != "shiki");
-        this.links.push({kind : "shikimori", url : "https://shikimori.one/animes/"+ this.id});
+        this.links.push({kind : "shikimori", url : "https://shikimori.io/animes/"+ this.id});
 
         if (this.links.filter(x => x.kind=="anime_db").length > 0){
             var anime_db_id = this.links.filter(x => x.kind=="anime_db")[0].url.match(/\d+/gm)[0];
@@ -994,7 +994,7 @@ function find_shiki_id(post){
     if (link != null){
         return link[0].match(/\d+/gm)[0];
     }else{
-        link = post.innerHTML.match(/shikimori.one.animes.\d+/gm);
+        link = post.innerHTML.match(/shikimori.io.animes.\d+/gm);
         if (link != null){
             return link[0].match(/\d+/gm)[0];
         }
@@ -1478,7 +1478,7 @@ function load_shiki(id){
             var names = document.title.match(/.*?\[/)[0].slice(0, -1).split("/");
             var romadji = names[1].trim().replaceAll("\"", "");
             var graphqlQuery = "{ \"query\": \"  { animes(search: \\\"" + romadji + "\\\", limit: 20, censored: false) { id  malId name airedOn { year } kind } } \"}";
-            get_ajax("https://shikimori.one/api/graphql", 'POST', 'application/json', graphqlQuery, search_handler);
+            get_ajax("https://shikimori.io/api/graphql", 'POST', 'application/json', graphqlQuery, search_handler);
         }
     }else{
         update_ui_shiki();
@@ -1511,7 +1511,7 @@ function search_handler() {
     }
 }
 function send_ajax_shiki(id){
-    // https://shikimori.one/api/doc/graphql
+    // https://shikimori.io/api/doc/graphql
 
     var graphqlQuery = "{ \"query\": \"{ animes(ids: \\\"" + id + "\\\", limit: 1, censored: false) { " +
         "id malId airedOn { year date } releasedOn { date } rating score kind episodes episodesAired duration status " +
