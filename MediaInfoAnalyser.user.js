@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.52
+// @version      0.5.53
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -101,7 +101,7 @@ class MediaInfo{
             }
         }
 
-        console.log(mi_spoiler.replaceAll("<br>", "\n"));
+        //console.log(mi_spoiler.replaceAll("<br>", "\n"));
 
         if(mi_spoiler.includes("Общее") || mi_spoiler.includes("General")){
             if(mi_spoiler.includes("Общее")){
