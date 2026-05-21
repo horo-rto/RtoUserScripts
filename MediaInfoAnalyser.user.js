@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RTO Release Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.51
+// @version      0.5.52
 // @description  It was just a MediaInfo analyser!
 // @author       Horo
 // @updateURL    https://raw.githubusercontent.com/horo-rto/RtoUserscripts/refs/heads/main/MediaInfoAnalyser.user.js
@@ -78,6 +78,7 @@ class MediaInfo{
     audio = [];
     subtl = [];
     extra = [];
+    error = false;
 
     constructor() {
         this.isRussian = true;
@@ -88,15 +89,19 @@ class MediaInfo{
     }
 
     parse(spoilers){
+        console.log(spoilers);
+
         for (const spoiler of spoilers){
             if (spoiler.toString().includes("Frame rate") ||
                 spoiler.toString().includes("FrameRate") ||
-                spoiler.toString().includes("Частота кадров")){
+                spoiler.toString().includes("Частота кадров") ||
+                spoiler.toString().includes("Битрейт") ||
+                spoiler.toString().includes("Bit rate")){
                 var mi_spoiler = spoiler.nodes[2].toString();
             }
         }
 
-        //console.log(mi_spoiler.replaceAll("<br>", "\n"));
+        console.log(mi_spoiler.replaceAll("<br>", "\n"));
 
         if(mi_spoiler.includes("Общее") || mi_spoiler.includes("General")){
             if(mi_spoiler.includes("Общее")){
@@ -1041,6 +1046,7 @@ function process_mi(spoilers){
         media_info = new MediaInfo();
         media_info.parse(spoilers);
     } catch (e) {
+        media_info.error = true;
         console.error("Media info parcing error:", e);
         $('#mi_data').css("color", "red");
         $('#mi_data').css("font-weight", "bold");
@@ -1053,6 +1059,7 @@ function process_mi(spoilers){
         console.log( media_info.dump() );
         $('#mi_data').html(media_info.toString());
     } catch (e) {
+        media_info.error = true;
         console.error("Media info parcing error:", e);
         $('#mi_data').css("color", "red");
         $('#mi_data').css("font-weight", "bold");
@@ -1773,8 +1780,10 @@ function update_ui_shiki(){
     }
 }
 function update_ui_mi(){
-    media_info.recalculate_language_errors(anime.country);
-    $('#mi_data').html(media_info.toString());
+    if (media_info.error == false){
+        media_info.recalculate_language_errors(anime.country);
+        $('#mi_data').html(media_info.toString());
+    }
 }
 
 // core web & data
